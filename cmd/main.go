@@ -1,10 +1,9 @@
 package main
 
 import (
-	"context"
 	"database/sql"
-	"fmt"
-	"real-time-forum/internal/db/users"
+	"net/http"
+	"real-time-forum/internal"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -14,16 +13,35 @@ func main() {
 	db, err := sql.Open("sqlite3", "../internal/db/database.db")
 
 	if err != nil {
-		panic("failed to create database")
+		panic("err")
 	}
 
-	newc := users.New(db)
+	app := &internal.App{
+		DB: db,
+	}
 
-	ctx := context.Background()
+	server := &http.Server{
+		Addr:    ":8000",
+		Handler: app.RegisterRoutes(),
+	}
 
-	user, _ := newc.GetUser(ctx, "98u23u98hdshhjsdjhs")
+	server.ListenAndServe()
 
-	fmt.Printf("%+v", user)
+	// if err != nil {
+	// 	panic("failed to create database")
+	// }
 
-	fmt.Println("test")
+	// newc := users.New(db)
+
+	// ctx := context.Background()
+
+	// user, _ := newc.GetUser(ctx, "98u23u98hdshhjsdjhs")
+
+	// fmt.Printf("%+v", user)
+
+	// folder, _ := os.ReadDir("../internal/db")
+
+	// fmt.Println(folder[3].Name())
+
+	// fmt.Println("test")
 }
