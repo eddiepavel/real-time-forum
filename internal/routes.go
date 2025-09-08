@@ -4,8 +4,8 @@ import (
 	"net/http"
 )
 
-func (app *App) RegisterRoutes() *http.ServeMux {
-	// http.HandlerFunc
+func (app *App) RegisterRoutes() http.Handler {
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /{$}", app.Login)

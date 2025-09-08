@@ -2,10 +2,10 @@ package internal
 
 import (
 	"database/sql"
-	"net/http"
+	"log/slog"
 )
 
 type App struct {
-	DB      *sql.DB
-	Handler []http.HandlerFunc
+	DB     *sql.DB
+	Logger *slog.Logger
 }

@@ -7,3 +7,17 @@ sql:
       go:
         package: "users"
         out: "/internal/db/users/"
+  - engine: "sqlite"
+    queries: ["/internal/db/posts/query.sql"]
+    schema: ["/internal/db/posts/schema.sql"]
+    gen:
+      go:
+        package: "posts"
+        out: "/internal/db/posts/"
+  - engine: "sqlite"
+    queries: ["/internal/db/comments/query.sql"]
+    schema: ["/internal/db/comments/schema.sql"]
+    gen:
+      go:
+        package: "comments"
+        out: "/internal/db/comments/"

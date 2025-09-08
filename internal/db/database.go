@@ -1,1 +1,1 @@
-package dbinit
+package db

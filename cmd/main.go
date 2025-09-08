@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"log/slog"
 	"net/http"
+	"os"
 	"real-time-forum/internal"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -10,14 +12,18 @@ import (
 
 func main() {
 
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
 	db, err := sql.Open("sqlite3", "../internal/db/database.db")
 
 	if err != nil {
-		panic("err")
+		logger.Error(err.Error(), "database_error", 10)
+		os.Exit(1)
 	}
 
 	app := &internal.App{
-		DB: db,
+		DB:     db,
+		Logger: logger,
 	}
 
 	server := &http.Server{
