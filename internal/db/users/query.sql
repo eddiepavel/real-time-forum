@@ -6,6 +6,9 @@ WHERE uuid = ? LIMIT 1;
 SELECT * FROM users
 WHERE username = ? LIMIT 1;
 
+-- name: GetUserByEmail :one
+SELECT * FROM users WHERE email = ? LIMIT 1;
+
 -- name: CreateUser :one
 INSERT INTO users(
     uuid, email, username, password, createdAt

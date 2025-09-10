@@ -15,5 +15,6 @@ func AllowedHeaders(next http.HandlerFunc, c *sql.DB, l *slog.Logger) http.Handl
 			}, l)
 			return
 		}
+		next(w, r)
 	})
 }
