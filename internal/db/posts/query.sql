@@ -4,21 +4,22 @@ INSERT INTO posts(
 )
 VALUES(
     ?, ?, ?, ?, ?, ?
-);
 
--- name GetPostById :one
+) RETURNING *;
+
+-- name: GetPostById :one
 SELECT * FROM posts 
 WHERE id = ?;
 
--- name GetPostByAuthor :one
+-- name: GetPostByAuthor :one
 SELECT * FROM posts 
 WHERE author = ?;
 
--- name UpdatePost :one
-UPDATE posts SET title = ?, categories = ?, content = ? WHERE id = ? AND author = ?;
+-- name: UpdatePost :one
+UPDATE posts SET title = ?, categories = ?, content = ? WHERE id = ? AND author = ? RETURNING *;
 
--- name TotalPosts :many
+-- name: TotalPosts :many
 SELECT COUNT(*) FROM posts;
 
---name GetPosts :many
+-- name: GetPosts :many
 SELECT * FROM posts ORDER BY time DESC LIMIT ? OFFSET ?;

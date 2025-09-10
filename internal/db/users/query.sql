@@ -8,9 +8,9 @@ WHERE username = ? LIMIT 1;
 
 -- name: CreateUser :one
 INSERT INTO users(
-    uuid, email, username, password, auth, picture, createdAt
+    uuid, email, username, password, createdAt
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?
 )
 RETURNING *;
 

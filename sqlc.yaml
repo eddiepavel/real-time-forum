@@ -21,3 +21,10 @@ sql:
       go:
         package: "comments"
         out: "/internal/db/comments/"
+  - engine: "sqlite"
+    queries: ["/internal/db/session/query.sql"]
+    schema: ["/internal/db/session/schema.sql"]
+    gen:
+      go:
+        package: "sessionDB"
+        out: "/internal/db/session/"

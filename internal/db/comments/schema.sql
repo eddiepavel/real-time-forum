@@ -1,9 +1,9 @@
 CREATE TABLE comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content LONGTEXT NOT NULL,
-    author INTEGER UNSIGNED NOT NULL,
+    author TEXT NOT NULL,
     post_id INTEGER UNSIGNED NOT NULL,
     time DATETIME NOT NULL,
-    FOREIGN KEY(author) REFERENCES users(id),
+    FOREIGN KEY(author) REFERENCES users(uuid),
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
 );
