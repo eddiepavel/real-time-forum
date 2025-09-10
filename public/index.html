@@ -1,11 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Real-Time Forum</title>
+    <link rel="stylesheet" href="output.css">
 </head>
-<body>
-    <h1>Hello app</h1>
+
+<body class="bg-slate-900 h-full">
+    <div class="flex">
+        <div class="flex-col w-3/4">
+            <nav class="flex items-center justify-between rounded-br-2xl py-10 bg-slate-400">
+                <h1 class="text-4xl font-bold text-slate-100 ml-10 [-webkit-text-stroke:1px_black]">Real-Time Forum</h1>
+                <div class="flex space-x-4 mr-10">
+                    <button id="loginbtn" class="px-4 py-2 bg-slate-900 text-slate-200 rounded cursor-pointer hover:bg-slate-700 transition duration-300">Login</button>
+                </div>
+            </nav>
+            <div id="posts" class="bg-amber-200 h-screen mt-10 p-6 rounded-lg shadow-lg">
+                posts
+            </div>
+        </div>
+        <div id="chat" class="bg-amber-100 min-h-full w-1/4 p-6 rounded-lg shadow-lg">
+            chat
+        </div>
+    </div>
+    <dialog id="loginDialog" class="rounded-lg p-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg">
+        <form method="dialog" class="flex flex-col space-y-4">
+            <h2 class="text-2xl font-bold mb-4">Login</h2>
+            <input type="text" id="username" placeholder="Username"
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="password" id="password" placeholder="Password"
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex justify-end space-x-4">
+                <button type="submit"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-300">Login</button>
+                <button type="button" id="cancelbtn"
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition duration-300">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+    <script src="main.js"></script>
 </body>
+
 </html>

@@ -1,2 +1,4 @@
 /tmp
 /cmd/tmp
+/public/node_modules
+/public/package-lock.json
