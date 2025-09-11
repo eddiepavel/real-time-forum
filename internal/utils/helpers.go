@@ -20,7 +20,7 @@ func CompareHashAndPassword(hashedPassword, plainPassword string) error {
 }
 
 func GenerateToken() (string, error) {
-	bytes := make([]byte, 16) // 16 bytes = 128 bits
+	bytes := make([]byte, 64) // 16 bytes = 128 bits
 	_, err := rand.Read(bytes)
 	if err != nil {
 		return "", err

@@ -2,12 +2,14 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"real-time-forum/internal/db"
+	sessionDB "real-time-forum/internal/db/session"
 	"real-time-forum/internal/db/users"
 	"real-time-forum/internal/utils"
 	"time"
@@ -21,15 +23,73 @@ type PayloadUser struct {
 	Password string `json:"password"`
 }
 
+type PayloadLogin struct {
+	AuthUser string `json:"authvalue"`
+	Password string `json:"password"`
+}
+
 func (app *App) Login(w http.ResponseWriter, r *http.Request) {
-	// excecute := users.New(app.DB)
-	utils.ResponseBuilder(w, 401, utils.ResponseData{
-		Error: map[string]string{"message": "Unauthorized"},
-		Data: &users.User{
-			Uuid: "jhagdjhsagjhdgsajh",
-		},
-		Paginate: struct{}{},
+
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
+			Error: map[string]any{"message": "failed to read body"},
+		}, app.Logger)
+		return
+	}
+	_ = r.Body.Close()
+
+	var p PayloadLogin
+
+	if err := json.NewDecoder(bytes.NewReader(b)).Decode(&p); err != nil {
+		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
+			Error: map[string]any{"message": "Invalid payload"},
+		}, app.Logger)
+		return
+	}
+
+	store := db.New(app.DB)
+
+	inputs := map[string][]interface{}{
+		"authvalue": {"required", "string", func(v interface{}) error {
+			authValue, _ := v.(string)
+			_, err := store.Users.GetUserOr(r.Context(), users.GetUserOrParams{Email: authValue, Username: authValue})
+			switch {
+			case err == nil:
+				return nil
+			case errors.Is(err, sql.ErrNoRows):
+				return errors.New("wrong credentials")
+			default:
+				return errors.New("temporary error checking email")
+			}
+		}},
+		"password": {"required", "string"},
+	}
+
+	ok, errs := utils.ValidateJSONFromBytes(b, inputs)
+
+	if !ok {
+		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
+			Error: errs,
+		}, app.Logger)
+		return
+	}
+
+	user, _ := store.Users.GetUserOr(r.Context(), users.GetUserOrParams{Email: p.AuthUser, Username: p.AuthUser})
+
+	if err := utils.CompareHashAndPassword(user.Password.String, p.Password); err != nil {
+		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
+			Error: map[string]any{"message": "Invalid Credentials"},
+		}, app.Logger)
+		return
+	}
+
+	session, _ := rotateSession(r.Context(), store, user.Uuid, 24*time.Hour)
+
+	utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
+		Data: map[string]string{"token": session.Token, "expires": session.Expiresat.String()},
 	}, app.Logger)
+
 }
 
 func (app *App) Register(w http.ResponseWriter, r *http.Request) {
@@ -113,9 +173,10 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 		Uuid:      id,
 		Username:  p.Username,
 		Email:     p.Email,
-		Password:  sql.NullString{String: hashed, Valid: hashed != ""}, // or change field to string if NOT NULL
+		Password:  sql.NullString{String: hashed, Valid: hashed != ""},
 		Createdat: time.Now(),
 	})
+
 	if err != nil {
 		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
 			Error: map[string]any{"message": err.Error()},
@@ -127,4 +188,28 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseBuilder(w, http.StatusCreated, utils.ResponseData{
 		Data: user,
 	}, app.Logger)
+}
+
+func rotateSession(ctx context.Context, store *db.Store, userID string, ttl time.Duration) (sessionDB.Session, error) {
+
+	// 1) Delete existing sessions for this user (idempotent)
+	if err := store.SessionDB.DeleteSessionUser(ctx, userID); err != nil {
+		return sessionDB.Session{}, err
+	}
+
+	// 2) Create a fresh session
+	token, err := utils.GenerateToken()
+	if err != nil {
+		return sessionDB.Session{}, err
+	}
+	sess, err := store.SessionDB.CreateSession(ctx, sessionDB.CreateSessionParams{
+		Token:     token,
+		Expiresat: time.Now().Add(ttl),
+		Userid:    userID,
+	})
+	if err != nil {
+		return sessionDB.Session{}, err
+	}
+
+	return sess, nil
 }

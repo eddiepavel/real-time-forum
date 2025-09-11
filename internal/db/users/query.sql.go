@@ -100,6 +100,31 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username interface{}) (
 	return i, err
 }
 
+const getUserOr = `-- name: GetUserOr :one
+SELECT uuid, email, username, password, createdat
+FROM users
+WHERE username = ? OR email = ?
+LIMIT 1
+`
+
+type GetUserOrParams struct {
+	Username interface{}
+	Email    string
+}
+
+func (q *Queries) GetUserOr(ctx context.Context, arg GetUserOrParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserOr, arg.Username, arg.Email)
+	var i User
+	err := row.Scan(
+		&i.Uuid,
+		&i.Email,
+		&i.Username,
+		&i.Password,
+		&i.Createdat,
+	)
+	return i, err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 set username = ?, email = ?

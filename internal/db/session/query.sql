@@ -15,3 +15,6 @@ SELECT * FROM session WHERE token = ? LIMIT 1;
 
 -- name: DeleteSession :exec
 DELETE FROM session WHERE id = ?;
+
+-- name: DeleteSessionUser :exec
+DELETE FROM session WHERE userId = ?;

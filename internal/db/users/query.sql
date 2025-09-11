@@ -22,3 +22,9 @@ UPDATE users
 set username = ?, email = ?
 WHERE uuid = ?
 RETURNING *;
+
+-- name: GetUserOr :one 
+SELECT *
+FROM users
+WHERE username = ? OR email = ?
+LIMIT 1;
