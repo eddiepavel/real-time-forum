@@ -31,10 +31,9 @@ type PayloadLogin struct {
 func (app *App) Login(w http.ResponseWriter, r *http.Request) {
 
 	b, err := io.ReadAll(r.Body)
+
 	if err != nil {
-		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
-			Error: map[string]any{"message": "failed to read body"},
-		}, app.Logger)
+		utils.BadRequest(w, errors.New("Invalid payload"))
 		return
 	}
 	_ = r.Body.Close()
@@ -42,9 +41,7 @@ func (app *App) Login(w http.ResponseWriter, r *http.Request) {
 	var p PayloadLogin
 
 	if err := json.NewDecoder(bytes.NewReader(b)).Decode(&p); err != nil {
-		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
-			Error: map[string]any{"message": "Invalid payload"},
-		}, app.Logger)
+		utils.BadRequest(w, errors.New("Invalid payload"))
 		return
 	}
 
@@ -69,41 +66,32 @@ func (app *App) Login(w http.ResponseWriter, r *http.Request) {
 	ok, errs := utils.ValidateJSONFromBytes(b, inputs)
 
 	if !ok {
-		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
-			Error: errs,
-		}, app.Logger)
+		utils.Error(w, 400, "400", "validation error", errs)
 		return
 	}
 
 	user, _ := store.Users.GetUserOr(r.Context(), users.GetUserOrParams{Email: p.AuthUser, Username: p.AuthUser})
 
 	if err := utils.CompareHashAndPassword(user.Password.String, p.Password); err != nil {
-		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
-			Error: map[string]any{"message": "Invalid Credentials"},
-		}, app.Logger)
+		utils.Error(w, 400, "400", "validation error", "Wrong credentials")
 		return
 	}
 
-	session, _ := rotateSession(r.Context(), store, user.Uuid, 24*time.Hour)
+	session, err := rotateSession(r.Context(), store, user.Uuid, 24*time.Hour)
 
-	utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
-		Data: map[string]string{"token": session.Token, "expires": session.Expiresat.String()},
-	}, app.Logger)
+	if err != nil {
+		utils.Internal(w, errors.New("Internal Server error"))
+	}
+
+	utils.OK(w, map[string]string{"token": session.Token, "expires": session.Expiresat.String()})
 
 }
 
 func (app *App) Register(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
-	// 1) Read body once
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
-		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
-			Error: map[string]any{"message": "failed to read body"},
-		}, app.Logger)
+		utils.BadRequest(w, errors.New("Invalid payload"))
 		return
 	}
 	_ = r.Body.Close()
@@ -111,9 +99,7 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 	// 2) Decode into struct once (typed payload)
 	var p PayloadUser
 	if err := json.NewDecoder(bytes.NewReader(b)).Decode(&p); err != nil {
-		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
-			Error: map[string]any{"message": "Invalid payload"},
-		}, app.Logger)
+		utils.BadRequest(w, errors.New("Invalid payload"))
 		return
 	}
 
@@ -130,9 +116,8 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 				case err == nil:
 					return errors.New("email already exists")
 				case errors.Is(err, sql.ErrNoRows):
-					return nil // ok, unique
+					return nil
 				default:
-					// unexpected DB error: return a generic message or bubble up
 					return errors.New("temporary error checking email")
 				}
 			},
@@ -159,13 +144,10 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 	// 4) Validate using the same bytes (no second read of r.Body)
 	ok, errs := utils.ValidateJSONFromBytes(b, inputs)
 	if !ok {
-		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
-			Error: errs,
-		}, app.Logger)
+		utils.Error(w, 400, "400", "validation error", errs)
 		return
 	}
 
-	// 5) Create user
 	id := uuid.New().String()
 	hashed, _ := utils.HashPassword(p.Password)
 
@@ -178,16 +160,11 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		utils.ResponseBuilder(w, http.StatusBadRequest, utils.ResponseData{
-			Error: map[string]any{"message": err.Error()},
-		}, app.Logger)
+		utils.Internal(w, errors.New("Internal Server error"))
 		return
 	}
 
-	// 6) Success (use 201)
-	utils.ResponseBuilder(w, http.StatusCreated, utils.ResponseData{
-		Data: user,
-	}, app.Logger)
+	utils.OK(w, user)
 }
 
 func rotateSession(ctx context.Context, store *db.Store, userID string, ttl time.Duration) (sessionDB.Session, error) {
