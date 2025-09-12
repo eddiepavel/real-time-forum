@@ -33,7 +33,7 @@ func (app *App) Login(w http.ResponseWriter, r *http.Request) {
 	b, err := io.ReadAll(r.Body)
 
 	if err != nil {
-		utils.BadRequest(w, errors.New("Invalid payload"))
+		utils.BadRequest(w, errors.New("invalid payload"))
 		return
 	}
 	_ = r.Body.Close()
@@ -41,7 +41,7 @@ func (app *App) Login(w http.ResponseWriter, r *http.Request) {
 	var p PayloadLogin
 
 	if err := json.NewDecoder(bytes.NewReader(b)).Decode(&p); err != nil {
-		utils.BadRequest(w, errors.New("Invalid payload"))
+		utils.BadRequest(w, errors.New("invalid payload"))
 		return
 	}
 
@@ -80,7 +80,7 @@ func (app *App) Login(w http.ResponseWriter, r *http.Request) {
 	session, err := rotateSession(r.Context(), store, user.Uuid, 24*time.Hour)
 
 	if err != nil {
-		utils.Internal(w, errors.New("Internal Server error"))
+		utils.Internal(w, errors.New("internal Server error"))
 	}
 
 	utils.OK(w, map[string]string{"token": session.Token, "expires": session.Expiresat.String()})
@@ -91,7 +91,7 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
-		utils.BadRequest(w, errors.New("Invalid payload"))
+		utils.BadRequest(w, errors.New("invalid payload"))
 		return
 	}
 	_ = r.Body.Close()
@@ -99,7 +99,7 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 	// 2) Decode into struct once (typed payload)
 	var p PayloadUser
 	if err := json.NewDecoder(bytes.NewReader(b)).Decode(&p); err != nil {
-		utils.BadRequest(w, errors.New("Invalid payload"))
+		utils.BadRequest(w, errors.New("invalid payload"))
 		return
 	}
 
@@ -160,7 +160,7 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		utils.Internal(w, errors.New("Internal Server error"))
+		utils.Internal(w, errors.New("internal Server error"))
 		return
 	}
 
