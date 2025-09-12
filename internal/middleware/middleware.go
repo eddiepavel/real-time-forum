@@ -16,12 +16,11 @@ func ChainMiddleware(h http.HandlerFunc, k []string, c *sql.DB, l *slog.Logger) 
 
 	selectMiddle := map[string]Middleware{
 		"auth":           AuthMiddleware,
-		"headers":        CommonHeaders,
 		"allowedHeaders": AllowedHeaders,
 		"logs":           LoggingMiddleware,
 	}
 
-	globalMiddle := []string{"headers", "allowedHeaders", "logs"}
+	globalMiddle := []string{"allowedHeaders", "logs"}
 
 	wrapped := h
 

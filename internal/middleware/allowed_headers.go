@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http"
 	"real-time-forum/internal/utils"
@@ -9,12 +10,22 @@ import (
 
 func AllowedHeaders(next http.HandlerFunc, c *sql.DB, l *slog.Logger) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Accept") != "application/json" {
-			utils.ResponseBuilder(w, 500, utils.ResponseData{
-				Error: map[string]string{"message": "Wrong headers"},
-			}, l)
+		if r.URL.Path == "/" {
+			next(w, r)
 			return
 		}
+		header := r.Header.Get("Accept")
+
+		if header == "" {
+			utils.BadRequest(w, errors.New("bad request"))
+			return
+		}
+
+		if header != "application/json" {
+			utils.BadRequest(w, errors.New("bad request"))
+			return
+		}
+
 		next(w, r)
 	})
 }
