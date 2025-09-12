@@ -2,7 +2,6 @@ package utils
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 )
 
@@ -53,7 +52,7 @@ func Error(w http.ResponseWriter, status int, code, msg string, details any) {
 }
 
 func BadRequest(w http.ResponseWriter, err error) {
-	Error(w, http.StatusBadRequest, "bad_request", "Invalid request.", errText(err))
+	Error(w, http.StatusBadRequest, "400", "Invalid request.", errText(err))
 }
 
 func Unauthorized(w http.ResponseWriter, reason string) {
@@ -76,5 +75,5 @@ func errText(err error) string {
 	if err == nil {
 		return ""
 	}
-	return errors.Unwrap(err).Error()
+	return err.Error()
 }
