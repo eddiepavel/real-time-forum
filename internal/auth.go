@@ -175,7 +175,7 @@ func rotateSession(ctx context.Context, store *db.Store, userID string, ttl time
 	}
 
 	// 2) Create a fresh session
-	token, err := utils.GenerateToken()
+	token, err := utils.GenerateToken(32)
 	if err != nil {
 		return sessionDB.Session{}, err
 	}

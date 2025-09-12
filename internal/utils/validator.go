@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -121,6 +122,18 @@ func (v *Validator) ValidateInput(value interface{}, rules []interface{}, key st
 			case r == "required":
 				if err := v.Required(value, key); err != nil {
 					errs = append(errs, err.Error())
+				}
+			case r == "base64":
+				str, ok := value.(string)
+				if !ok {
+					errs = append(errs, "image must be base64")
+					break
+				}
+				if idx := strings.Index(str, ","); idx != -1 {
+					str = str[idx+1:]
+				}
+				if _, err := base64.StdEncoding.DecodeString(str); err != nil {
+					errs = append(errs, "image must be base64")
 				}
 			case strings.HasPrefix(r, "same:"):
 				other := strings.TrimPrefix(r, "same:")
