@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"mime"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -112,4 +114,14 @@ func getExtensionFromBase64(base64Str string) string {
 		}
 	}
 	return ""
+}
+
+func ConvertQueryToNumber(r *http.Request, key string) (int64, error) {
+	num, err := strconv.ParseInt(r.URL.Query().Get(key), 10, 64)
+
+	if err != nil {
+		return 0, errors.New("")
+	}
+
+	return num, nil
 }

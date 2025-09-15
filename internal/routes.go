@@ -14,6 +14,7 @@ func (app *App) RegisterRoutes() http.Handler {
 	mux.HandleFunc("POST /login", middleware.ChainMiddleware(app.Login, []string{}, app.DB, app.Logger))
 	mux.HandleFunc("POST /register", middleware.ChainMiddleware(app.Register, []string{}, app.DB, app.Logger))
 	mux.HandleFunc("POST /post/create", middleware.ChainMiddleware(app.CreatePost, []string{"auth"}, app.DB, app.Logger))
+	mux.HandleFunc("GET /posts", middleware.ChainMiddleware(app.GetPosts, []string{"auth"}, app.DB, app.Logger))
 
 	return mux
 }

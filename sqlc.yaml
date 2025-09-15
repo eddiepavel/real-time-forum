@@ -9,7 +9,7 @@ sql:
         out: "/internal/db/users/"
   - engine: "sqlite"
     queries: ["/internal/db/posts/query.sql"]
-    schema: ["/internal/db/posts/schema.sql"]
+    schema: ["/internal/db/posts/schema.sql", "/internal/db/users/schema.sql"]
     gen:
       go:
         package: "posts"
