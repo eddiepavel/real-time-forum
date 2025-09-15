@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"real-time-forum/internal/db"
@@ -171,5 +172,78 @@ func (app *App) GetPosts(w http.ResponseWriter, r *http.Request) {
 		Size:  int(limit),
 		Total: len(postList),
 	}))
+
+}
+
+func (app *App) UpdatePost(w http.ResponseWriter, r *http.Request) {
+
+	if r.PathValue("id") == "" {
+		utils.BadRequest(w, errors.New("post id missing"))
+	}
+
+	postInt, err := utils.ConvertPathValueNumber(r, "id")
+
+	if err != nil {
+		fmt.Println(err)
+		utils.BadRequest(w, errors.New("wrong path value"))
+	}
+
+	b, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		utils.BadRequest(w, errors.New("invalid payload"))
+		return
+	}
+
+	var p PostPayload
+
+	if err := json.NewDecoder(bytes.NewReader(b)).Decode(&p); err != nil {
+		utils.BadRequest(w, errors.New("invalid payload"))
+		return
+
+	}
+
+	inputs := map[string][]interface{}{
+		"title":    {"required", "string"},
+		"category": {"required", "string"},
+		"content":  {"required", "string"},
+	}
+
+	ok, errs := utils.ValidateJSONFromBytes(b, inputs)
+
+	if !ok {
+		utils.Error(w, 400, "400", "validation error", errs)
+		return
+	}
+
+	user := r.Context().Value(middleware.UserKey).(*users.User)
+
+	store := db.New(app.DB)
+
+	post, err := store.Posts.GetPostById(r.Context(), postInt)
+
+	if err == sql.ErrNoRows {
+		utils.NotFound(w)
+		return
+	}
+
+	if post.Author != user.Uuid {
+		utils.Forbidden(w)
+		return
+	}
+
+	updatePost, err := store.Posts.UpdatePost(r.Context(), posts.UpdatePostParams{
+		Title:      p.Title,
+		Categories: p.Categories,
+		Content:    p.Content,
+		ID:         post.ID,
+		Author:     user.Uuid,
+	})
+
+	if err != nil {
+		utils.Internal(w, errors.New("internal error"))
+	}
+
+	utils.OK(w, updatePost)
 
 }

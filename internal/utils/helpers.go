@@ -125,3 +125,13 @@ func ConvertQueryToNumber(r *http.Request, key string) (int64, error) {
 
 	return num, nil
 }
+
+func ConvertPathValueNumber(r *http.Request, key string) (int64, error) {
+	num, err := strconv.ParseInt(r.PathValue(key), 10, 64)
+
+	if err != nil {
+		return 0, errors.New("")
+	}
+
+	return num, nil
+}
