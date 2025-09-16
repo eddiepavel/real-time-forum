@@ -16,17 +16,24 @@ import (
 	"time"
 )
 
-type PostUser struct {
+type EntityUser struct {
 	Username string `json:"username"`
 	CanEdit  bool   `json:"canEdit"`
 }
 
+type Comments struct {
+	Id      int64       `json:"id,omitempty"`
+	Content string      `json:"content"`
+	Author  *EntityUser `json:"author"`
+	Time    time.Time   `json:"created_at"`
+}
+
 type Post struct {
-	Title      string    `json:"title"`
-	Categories string    `json:"category"`
-	Content    string    `json:"content"`
-	Author     *PostUser `json:"author"`
-	Time       time.Time `json:"createad_at"`
+	Title      string      `json:"title"`
+	Categories string      `json:"category"`
+	Content    string      `json:"content"`
+	Author     *EntityUser `json:"author"`
+	Time       time.Time   `json:"createad_at"`
 }
 
 type PostPayload struct {
@@ -34,6 +41,10 @@ type PostPayload struct {
 	Categories string `json:"category"`
 	Content    string `json:"content"`
 	Image      string `json:"image"`
+}
+
+type CommentPayload struct {
+	Content string `json:"content"`
 }
 
 func (app *App) CreatePost(w http.ResponseWriter, r *http.Request) {
@@ -159,7 +170,7 @@ func (app *App) GetPosts(w http.ResponseWriter, r *http.Request) {
 			Title:      p.Title,
 			Categories: p.Categories,
 			Content:    p.Content,
-			Author: &PostUser{
+			Author: &EntityUser{
 				Username: p.AuthorUsername.(string),
 				CanEdit:  canEdit,
 			},
@@ -245,5 +256,50 @@ func (app *App) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.OK(w, updatePost)
+
+}
+
+func (app *App) GetPost(w http.ResponseWriter, r *http.Request) {
+
+	if r.PathValue("id") == "" {
+		utils.BadRequest(w, errors.New("post id missing"))
+	}
+
+	postInt, err := utils.ConvertPathValueNumber(r, "id")
+
+	if err != nil {
+		fmt.Println(err)
+		utils.BadRequest(w, errors.New("wrong path value"))
+	}
+
+	store := db.New(app.DB)
+
+	user := r.Context().Value(middleware.UserKey).(*users.User)
+
+	post, err := store.Posts.GetPostById(r.Context(), postInt)
+
+	if err == sql.ErrNoRows {
+		utils.NotFound(w)
+		return
+	}
+
+	postUser, _ := store.Users.GetUser(r.Context(), post.Author)
+
+	canEdit := false
+
+	if post.Author == user.Uuid {
+		canEdit = true
+	}
+
+	utils.Write(w, 200, Post{
+		Title:      post.Title,
+		Categories: post.Categories,
+		Content:    post.Content,
+		Author: &EntityUser{
+			Username: postUser.Username.(string),
+			CanEdit:  canEdit,
+		},
+		Time: post.Time,
+	})
 
 }

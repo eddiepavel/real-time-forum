@@ -113,6 +113,68 @@ func (q *Queries) GetCommentsByPostId(ctx context.Context, postID interface{}) (
 	return items, nil
 }
 
+const getCommentsWithAuthorUsername = `-- name: GetCommentsWithAuthorUsername :many
+SELECT
+    comments.id,
+    comments.content,
+    comments.author,
+    comments.content,
+    comments.post_id,
+    users.username AS author_username,
+    comments.time
+FROM comments
+JOIN users ON comments.author = users.uuid
+WHERE comments.post_id = ?
+ORDER BY comments.time DESC LIMIT ? OFFSET ?
+`
+
+type GetCommentsWithAuthorUsernameParams struct {
+	PostID interface{}
+	Limit  int64
+	Offset int64
+}
+
+type GetCommentsWithAuthorUsernameRow struct {
+	ID             int64
+	Content        interface{}
+	Author         string
+	Content_2      interface{}
+	PostID         interface{}
+	AuthorUsername interface{}
+	Time           time.Time
+}
+
+func (q *Queries) GetCommentsWithAuthorUsername(ctx context.Context, arg GetCommentsWithAuthorUsernameParams) ([]GetCommentsWithAuthorUsernameRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCommentsWithAuthorUsername, arg.PostID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCommentsWithAuthorUsernameRow
+	for rows.Next() {
+		var i GetCommentsWithAuthorUsernameRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Content,
+			&i.Author,
+			&i.Content_2,
+			&i.PostID,
+			&i.AuthorUsername,
+			&i.Time,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateComment = `-- name: UpdateComment :one
 UPDATE comments SET content = ? WHERE id = ? AND author = ? RETURNING id, content, author, post_id, time
 `

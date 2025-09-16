@@ -5,6 +5,7 @@
 package comments
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -14,4 +15,12 @@ type Comment struct {
 	Author  string
 	PostID  interface{}
 	Time    time.Time
+}
+
+type User struct {
+	Uuid      string
+	Email     string
+	Username  interface{}
+	Password  sql.NullString
+	Createdat time.Time
 }
