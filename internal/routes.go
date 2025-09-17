@@ -18,6 +18,7 @@ func (app *App) RegisterRoutes() http.Handler {
 	mux.HandleFunc("GET /post/{id}", middleware.ChainMiddleware(app.GetPost, []string{"auth"}, app.DB, app.Logger))
 	mux.HandleFunc("POST /update/post/{id}", middleware.ChainMiddleware(app.UpdatePost, []string{"auth"}, app.DB, app.Logger))
 	mux.HandleFunc("POST /comment/create/post/{id}", middleware.ChainMiddleware(app.CreateComment, []string{"auth"}, app.DB, app.Logger))
+	mux.HandleFunc("GET /comments/post/{id}", middleware.ChainMiddleware(app.GetCommentsByPost, []string{"auth"}, app.DB, app.Logger))
 
 	return mux
 }

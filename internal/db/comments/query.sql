@@ -32,4 +32,4 @@ SELECT
 FROM comments
 JOIN users ON comments.author = users.uuid
 WHERE comments.post_id = ?
-ORDER BY comments.time DESC LIMIT ? OFFSET ?;
+ORDER BY comments.time;

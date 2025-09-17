@@ -84,3 +84,63 @@ func (app *App) CreateComment(w http.ResponseWriter, r *http.Request) {
 	utils.OK(w, comment)
 
 }
+
+func (app *App) GetCommentsByPost(w http.ResponseWriter, r *http.Request) {
+
+	if r.PathValue("id") == "" {
+		utils.BadRequest(w, errors.New("id is missing"))
+		return
+	}
+
+	postId, err := utils.ConvertPathValueNumber(r, "id")
+
+	if err != nil {
+		utils.BadRequest(w, errors.New("wrong id value"))
+		return
+	}
+
+	store := db.New(app.DB)
+
+	post, err := store.Posts.GetPostById(r.Context(), postId)
+
+	if err == sql.ErrNoRows {
+		utils.NotFound(w)
+		return
+	}
+
+	comments, err := store.Comments.GetCommentsWithAuthorUsername(r.Context(), post.ID)
+
+	if err != nil && err != sql.ErrNoRows {
+		utils.Internal(w, errors.New("internal server error"))
+		return
+	}
+
+	if len(comments) == 0 {
+		utils.OK(w, []string{})
+		return
+	}
+
+	var commentList []Comments
+
+	user := r.Context().Value(middleware.UserKey).(*users.User)
+
+	for _, comment := range comments {
+		canEdit := false
+
+		if comment.Author == user.Uuid {
+			canEdit = true
+		}
+
+		commentList = append(commentList, Comments{
+			Content: comment.Content.(string),
+			Author: &EntityUser{
+				Username: comment.AuthorUsername.(string),
+				CanEdit:  canEdit,
+			},
+		})
+
+	}
+
+	utils.OK(w, commentList)
+
+}
