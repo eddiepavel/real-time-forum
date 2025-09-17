@@ -53,10 +53,38 @@ const API = (() => {
     });
   }
 
+  async function listPosts({ page = 1, limit = 10 } = {}) {
+    const search = new URLSearchParams({ page: String(page), limit: String(limit) });
+    return request(`/posts?${search.toString()}`);
+  }
+
+  async function createPost({ title, body }) {
+    return request("/posts", { method: "POST", body: { title, body }, auth: true });
+  }
+
+  async function getPost(id) {
+    return request(`/posts/${id}`);
+  }
+
+  // Comments
+  async function listComments(postId, { page = 1, limit = 20 } = {}) {
+    const search = new URLSearchParams({ page: String(page), limit: String(limit) });
+    return request(`/posts/${postId}/comments?${search.toString()}`);
+  }
+
+  async function addComment(postId, body) {
+    return request(`/posts/${postId}/comments`, {
+      method: "POST",
+      body: { body },
+      auth: true,
+    });
+  }
+  
+
   function logoutClientOnly() {
     // backend /logout not implemented yet; just clear locally
     clearToken();
   }
 
-  return { login, register, getToken, logoutClientOnly };
+  return { login, register, getToken, logoutClientOnly, listPosts, createPost, getPost, listComments, addComment,};
 })();
