@@ -59,7 +59,7 @@ const API = (() => {
   }
 
   async function createPost({ title, body }) {
-    return request("/posts", { method: "POST", body: { title, body }, auth: true });
+    return request("/post/create", { method: "POST", body: { title, body }, auth: true });
   }
 
   async function getPost(id) {

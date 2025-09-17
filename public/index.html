@@ -13,11 +13,17 @@
         <div class="flex-col w-3/4">
             <nav class="flex items-center justify-between rounded-br-2xl py-10 bg-slate-400">
                 <h1 class="text-4xl font-bold text-slate-100 ml-10 [-webkit-text-stroke:1px_black]">Real-Time Forum</h1>
-                <div class="flex space-x-4 mr-10">
+                <div class="flex space-x-2 mr-10">
                     <button id="loginbtn" class="px-4 py-2 bg-slate-900 text-slate-200 rounded cursor-pointer hover:bg-slate-700 transition duration-300">Login</button>
+                    <button id="registerbtn" class="px-4 py-2 bg-slate-900 text-slate-200 rounded cursor-pointer hover:bg-slate-700 transition duration-300">Register</button>
                 </div>
             </nav>
-            <div id="posts" class="bg-amber-200 h-screen mt-10 p-6 rounded-lg shadow-lg">
+            <div id="status" class="flex items-center justify-end text-slate-200 px-10 py-4">
+                <button id="newpostbtn" class="hidden px-4 py-2 bg-slate-600 text-slate-200 rounded cursor-pointer hover:bg-slate-700 transition duration-300">
+                    New Post
+                </button>
+            </div>
+            <div id="posts" class="bg-amber-200 h-screen p-6 rounded-lg shadow-lg">
                 posts
             </div>
         </div>
@@ -28,9 +34,9 @@
     <dialog id="loginDialog" class="rounded-lg p-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg">
         <form method="dialog" class="flex flex-col space-y-4">
             <h2 class="text-2xl font-bold mb-4">Login</h2>
-            <input type="text" id="username" placeholder="Username"
+            <input type="text" id="login_username" placeholder="Username/Email"
                 class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <input type="password" id="password" placeholder="Password"
+            <input type="password" id="login_password" placeholder="Password"
                 class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
             <div class="flex justify-end space-x-4">
                 <button type="submit"
@@ -40,7 +46,42 @@
             </div>
         </form>
     </dialog>
+    <dialog id="registerDialog" class="rounded-lg p-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg">
+        <form method="dialog" class="flex flex-col space-y-4">
+            <h2 class="text-2xl font-bold mb-4">Register</h2>
+            <input type="text" id="reg_username" placeholder="Username"
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="text" id="reg_email" placeholder="Email"
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="password" id="reg_password" placeholder="Password"
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="password" id="confirm_password" placeholder="Confirm Password"
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex justify-end space-x-4">
+                <button type="submit"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-300">Register</button>
+                <button type="button" id="cancelbtn"
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition duration-300">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="newPostDialog" class="rounded-lg p-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg">
+        <form method="dialog" class="flex flex-col space-y-4">
+            <h2 class="text-2xl font-bold mb-4">New Post</h2>
+            <input type="text" id="post_title" placeholder="Title"
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <textarea id="post_content" placeholder="Content" rows="4"
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            <div class="flex justify-end space-x-4">
+                <button type="submit"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-300">Post</button>
+                <button type="button" id="cancelPostBtn"
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition duration-300">Cancel</button>
+            </div>
+        </form>
+    </dialog>
     <script src="main.js"></script>
+    <script src="api.js"></script>
 </body>
 
 </html>
