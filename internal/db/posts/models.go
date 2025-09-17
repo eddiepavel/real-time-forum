@@ -18,3 +18,11 @@ type Post struct {
 	Time       time.Time
 	ImagePath  sql.NullString
 }
+
+type User struct {
+	Uuid      string
+	Email     string
+	Username  interface{}
+	Password  sql.NullString
+	Createdat time.Time
+}

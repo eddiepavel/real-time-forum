@@ -132,6 +132,69 @@ func (q *Queries) GetPosts(ctx context.Context, arg GetPostsParams) ([]Post, err
 	return items, nil
 }
 
+const getPostsWithAuthorUsername = `-- name: GetPostsWithAuthorUsername :many
+SELECT
+    posts.id,
+    posts.title,
+    posts.categories,
+    posts.content,
+    posts.author,
+    users.username AS author_username,
+    posts.time,
+    posts.image_path
+FROM posts
+JOIN users ON posts.author = users.uuid
+ORDER BY time DESC LIMIT ? OFFSET ?
+`
+
+type GetPostsWithAuthorUsernameParams struct {
+	Limit  int64
+	Offset int64
+}
+
+type GetPostsWithAuthorUsernameRow struct {
+	ID             int64
+	Title          string
+	Categories     string
+	Content        string
+	Author         string
+	AuthorUsername interface{}
+	Time           time.Time
+	ImagePath      sql.NullString
+}
+
+func (q *Queries) GetPostsWithAuthorUsername(ctx context.Context, arg GetPostsWithAuthorUsernameParams) ([]GetPostsWithAuthorUsernameRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPostsWithAuthorUsername, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPostsWithAuthorUsernameRow
+	for rows.Next() {
+		var i GetPostsWithAuthorUsernameRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Categories,
+			&i.Content,
+			&i.Author,
+			&i.AuthorUsername,
+			&i.Time,
+			&i.ImagePath,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const totalPosts = `-- name: TotalPosts :many
 SELECT COUNT(*) FROM posts
 `

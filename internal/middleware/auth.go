@@ -25,17 +25,20 @@ func AuthMiddleware(next http.HandlerFunc, connection *sql.DB, logger *slog.Logg
 
 		if header == "" {
 			utils.BadRequest(w, errors.New("bad Request"))
+			return
 		}
 
 		const prefix = "Bearer "
 		if !strings.HasPrefix(header, prefix) {
 			utils.BadRequest(w, errors.New("bad Request"))
+			return
 		}
 
 		token := strings.TrimPrefix(header, prefix)
 
 		if token == "" {
 			utils.Unauthorized(w, "token missing")
+			return
 		}
 
 		store := db.New(connection)
@@ -51,7 +54,7 @@ func AuthMiddleware(next http.HandlerFunc, connection *sql.DB, logger *slog.Logg
 		// Use session.ExpiresAt as is (local time)
 		expiresAt := session.Expiresat
 
-		if expiresAt.Before(time.Now().Add(time.Hour * 24).UTC()) {
+		if expiresAt.Before(time.Now().UTC()) {
 			store.SessionDB.DeleteSession(r.Context(), session.ID)
 			utils.Unauthorized(w, "Token expired")
 			return

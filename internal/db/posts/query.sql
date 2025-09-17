@@ -23,3 +23,17 @@ SELECT COUNT(*) FROM posts;
 
 -- name: GetPosts :many
 SELECT * FROM posts ORDER BY time DESC LIMIT ? OFFSET ?;
+
+-- name: GetPostsWithAuthorUsername :many
+SELECT
+    posts.id,
+    posts.title,
+    posts.categories,
+    posts.content,
+    posts.author,
+    users.username AS author_username,
+    posts.time,
+    posts.image_path
+FROM posts
+JOIN users ON posts.author = users.uuid
+ORDER BY time DESC LIMIT ? OFFSET ?

@@ -19,3 +19,17 @@ WHERE author = ?;
 
 -- name: UpdateComment :one
 UPDATE comments SET content = ? WHERE id = ? AND author = ? RETURNING *;
+
+-- name: GetCommentsWithAuthorUsername :many
+SELECT
+    comments.id,
+    comments.content,
+    comments.author,
+    comments.content,
+    comments.post_id,
+    users.username AS author_username,
+    comments.time
+FROM comments
+JOIN users ON comments.author = users.uuid
+WHERE comments.post_id = ?
+ORDER BY comments.time DESC LIMIT ? OFFSET ?;
