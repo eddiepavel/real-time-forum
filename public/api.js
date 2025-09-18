@@ -58,8 +58,8 @@ const API = (() => {
     return request(`/posts?${search.toString()}`);
   }
 
-  async function createPost({ title, body }) {
-    return request("/post/create", { method: "POST", body: { title, body }, auth: true });
+  async function createPost({ title, content, category, image }) {
+    return request("/post/create", { method: "POST", body: { title, content, category, image }, auth: true });
   }
 
   async function getPost(id) {

@@ -18,7 +18,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const cancelPostBtn = document.getElementById('cancelPostBtn');
     const postTitleInput = document.getElementById('post_title');
     const postBodyInput = document.getElementById('post_content');
-
+    const postCategoryInput = document.getElementById('post_category');
+    const postImageInput = document.getElementById('post_image');
 
     if (API.getToken()) {
         loginbtn.textContent = "Logout";
@@ -42,17 +43,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
     newPostForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        try {
-            await API.createPost({
-                title: postTitleInput.value.trim(),
-                body: postBodyInput.value.trim()
-            });
-            newPostDialog.close();
-            alert("Post created successfully!");
-            // Optionally, refresh the post list here
-        } catch (err) {
-            alert("Failed to create post: " + err.message);
+        const file = postImageInput.files[0];
+        if (!file) {
+            alert("Please select an image.");
+            return;
         }
+        const reader = new FileReader();
+        reader.onload = async function(event) {
+            try {
+                await API.createPost({
+                    title: postTitleInput.value.trim(),
+                    content: postBodyInput.value.trim(),
+                    category: postCategoryInput.value,
+                    image: event.target.result
+                });
+                newPostDialog.close();
+                alert("Post created successfully!");
+                // Optionally, refresh the post list here
+            } catch (err) {
+                alert("Failed to create post: " + err.message);
+            }
+        };
+        reader.onerror = function() {
+            alert("Failed to read image file.");
+        };
+        reader.readAsDataURL(file);
     });
 
     loginbtn.addEventListener('click', function () {
