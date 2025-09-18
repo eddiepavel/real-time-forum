@@ -29,11 +29,12 @@ type Comments struct {
 }
 
 type Post struct {
-	Title      string      `json:"title"`
-	Categories string      `json:"category"`
-	Content    string      `json:"content"`
-	Author     *EntityUser `json:"author"`
-	Time       time.Time   `json:"createad_at"`
+	Title      string         `json:"title"`
+	Categories string         `json:"category"`
+	Content    string         `json:"content"`
+	Author     *EntityUser    `json:"author"`
+	Time       time.Time      `json:"createad_at"`
+	Image      sql.NullString `json:"image"`
 }
 
 type PostPayload struct {
@@ -174,7 +175,8 @@ func (app *App) GetPosts(w http.ResponseWriter, r *http.Request) {
 				Username: p.AuthorUsername.(string),
 				CanEdit:  canEdit,
 			},
-			Time: p.Time,
+			Time:  p.Time,
+			Image: sql.NullString{String: p.ImagePath.String, Valid: p.ImagePath.String != ""},
 		})
 	}
 
@@ -299,7 +301,8 @@ func (app *App) GetPost(w http.ResponseWriter, r *http.Request) {
 			Username: postUser.Username.(string),
 			CanEdit:  canEdit,
 		},
-		Time: post.Time,
+		Time:  post.Time,
+		Image: sql.NullString{String: post.ImagePath.String, Valid: post.ImagePath.String != ""},
 	})
 
 }
