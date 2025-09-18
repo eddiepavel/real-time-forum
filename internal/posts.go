@@ -180,10 +180,17 @@ func (app *App) GetPosts(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	total, err := store.Posts.TotalPosts(r.Context())
+
+	if err != nil {
+		utils.Internal(w, errors.New("internal server error"))
+	}
+
 	utils.Write(w, 200, utils.WithPagination(postList, utils.Pagination{
-		Page:  int(page),
-		Size:  int(limit),
-		Total: len(postList),
+		Page:    int(page),
+		Size:    int(limit),
+		Current: len(postList),
+		Total:   int(total),
 	}))
 
 }

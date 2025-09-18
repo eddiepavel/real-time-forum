@@ -18,7 +18,7 @@ WHERE author = ?;
 -- name: UpdatePost :one
 UPDATE posts SET title = ?, categories = ?, content = ? WHERE id = ? AND author = ? RETURNING *;
 
--- name: TotalPosts :many
+-- name: TotalPosts :one
 SELECT COUNT(*) FROM posts;
 
 -- name: GetPosts :many

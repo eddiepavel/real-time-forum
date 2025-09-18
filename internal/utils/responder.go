@@ -18,9 +18,10 @@ type ErrBody struct {
 }
 
 type Pagination struct {
-	Page  int `json:"page"`
-	Size  int `json:"size"`
-	Total int `json:"total"`
+	Page    int `json:"page"`
+	Size    int `json:"size"`
+	Current int `json:"current"`
+	Total   int `json:"total"`
 }
 
 func Write(w http.ResponseWriter, status int, v any) {
