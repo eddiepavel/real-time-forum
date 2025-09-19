@@ -3,12 +3,11 @@ package middleware
 import (
 	"context"
 	"database/sql"
-	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"real-time-forum/internal/db"
 	"real-time-forum/internal/utils"
-	"strings"
 	"time"
 )
 
@@ -21,26 +20,14 @@ const UserKey ContextKey = "user"
 func AuthMiddleware(next http.HandlerFunc, connection *sql.DB, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		header := r.Header.Get("Authorization")
+		token, err := utils.StripTokenFromRequest(r)
 
-		if header == "" {
-			utils.BadRequest(w, errors.New("bad Request"))
+		if err != nil {
+			fmt.Println("here2")
+			utils.BadRequest(w, err)
 			return
 		}
-
-		const prefix = "Bearer "
-		if !strings.HasPrefix(header, prefix) {
-			utils.BadRequest(w, errors.New("bad Request"))
-			return
-		}
-
-		token := strings.TrimPrefix(header, prefix)
-
-		if token == "" {
-			utils.Unauthorized(w, "token missing")
-			return
-		}
-
+		fmt.Println("here")
 		store := db.New(connection)
 
 		// Retrieve the session

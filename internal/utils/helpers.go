@@ -135,3 +135,39 @@ func ConvertPathValueNumber(r *http.Request, key string) (int64, error) {
 
 	return num, nil
 }
+
+func StripTokenFromRequest(r *http.Request) (string, error) {
+
+	var token string
+
+	if r.URL.Path != "/ws" {
+		header := r.Header.Get("Authorization")
+
+		if header == "" {
+			return "", errors.New("bad Request")
+		}
+
+		if !strings.HasPrefix(header, "Bearer ") {
+			return "", errors.New("bad Request")
+		}
+
+		token = strings.TrimPrefix(header, "Bearer ")
+
+		if token == "" {
+			return "", errors.New("bad Request")
+		}
+
+		return token, nil
+	}
+
+	queryToken := r.URL.Query().Get("token")
+
+	if queryToken == "" {
+		return "", errors.New("bad Request")
+
+	}
+
+	token = queryToken
+
+	return token, nil
+}
