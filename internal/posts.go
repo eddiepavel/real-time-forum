@@ -29,11 +29,12 @@ type Comments struct {
 }
 
 type Post struct {
-	Title      string      `json:"title"`
-	Categories string      `json:"category"`
-	Content    string      `json:"content"`
-	Author     *EntityUser `json:"author"`
-	Time       time.Time   `json:"createad_at"`
+	Title      string         `json:"title"`
+	Categories string         `json:"category"`
+	Content    string         `json:"content"`
+	Author     *EntityUser    `json:"author"`
+	Time       time.Time      `json:"createad_at"`
+	Image      sql.NullString `json:"image"`
 }
 
 type PostPayload struct {
@@ -104,6 +105,7 @@ func (app *App) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		utils.Internal(w, errors.New("internal server error"))
+		return
 	}
 
 	utils.OK(w, post)
@@ -155,10 +157,12 @@ func (app *App) GetPosts(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil && err != sql.ErrNoRows {
 		utils.Internal(w, errors.New("internal"))
+		return
 	}
 
 	if err == sql.ErrNoRows {
 		utils.OK(w, []string{})
+		return
 	}
 	var postList []Post
 	for _, p := range posts {
@@ -174,14 +178,23 @@ func (app *App) GetPosts(w http.ResponseWriter, r *http.Request) {
 				Username: p.AuthorUsername.(string),
 				CanEdit:  canEdit,
 			},
-			Time: p.Time,
+			Time:  p.Time,
+			Image: sql.NullString{String: p.ImagePath.String, Valid: p.ImagePath.String != ""},
 		})
 	}
 
+	total, err := store.Posts.TotalPosts(r.Context())
+
+	if err != nil {
+		utils.Internal(w, errors.New("internal server error"))
+		return
+	}
+
 	utils.Write(w, 200, utils.WithPagination(postList, utils.Pagination{
-		Page:  int(page),
-		Size:  int(limit),
-		Total: len(postList),
+		Page:    int(page),
+		Size:    int(limit),
+		Current: len(postList),
+		Total:   int(total),
 	}))
 
 }
@@ -190,13 +203,14 @@ func (app *App) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	if r.PathValue("id") == "" {
 		utils.BadRequest(w, errors.New("post id missing"))
+		return
 	}
 
 	postInt, err := utils.ConvertPathValueNumber(r, "id")
 
 	if err != nil {
-		fmt.Println(err)
 		utils.BadRequest(w, errors.New("wrong path value"))
+		return
 	}
 
 	b, err := io.ReadAll(r.Body)
@@ -253,6 +267,7 @@ func (app *App) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		utils.Internal(w, errors.New("internal error"))
+		return
 	}
 
 	utils.OK(w, updatePost)
@@ -263,6 +278,7 @@ func (app *App) GetPost(w http.ResponseWriter, r *http.Request) {
 
 	if r.PathValue("id") == "" {
 		utils.BadRequest(w, errors.New("post id missing"))
+		return
 	}
 
 	postInt, err := utils.ConvertPathValueNumber(r, "id")
@@ -270,6 +286,7 @@ func (app *App) GetPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 		utils.BadRequest(w, errors.New("wrong path value"))
+		return
 	}
 
 	store := db.New(app.DB)
@@ -299,7 +316,8 @@ func (app *App) GetPost(w http.ResponseWriter, r *http.Request) {
 			Username: postUser.Username.(string),
 			CanEdit:  canEdit,
 		},
-		Time: post.Time,
+		Time:  post.Time,
+		Image: sql.NullString{String: post.ImagePath.String, Valid: post.ImagePath.String != ""},
 	})
 
 }

@@ -3,21 +3,28 @@ package internal
 import (
 	"net/http"
 	"real-time-forum/internal/middleware"
+	"real-time-forum/internal/socket"
 )
 
 func (app *App) RegisterRoutes() http.Handler {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("../public"))))
-	mux.HandleFunc("GET /{$}", middleware.ChainMiddleware(Index, []string{}, app.DB, app.Logger))
-	mux.HandleFunc("POST /login", middleware.ChainMiddleware(app.Login, []string{}, app.DB, app.Logger))
-	mux.HandleFunc("POST /register", middleware.ChainMiddleware(app.Register, []string{}, app.DB, app.Logger))
-	mux.HandleFunc("POST /post/create", middleware.ChainMiddleware(app.CreatePost, []string{"auth"}, app.DB, app.Logger))
-	mux.HandleFunc("GET /posts", middleware.ChainMiddleware(app.GetPosts, []string{"auth"}, app.DB, app.Logger))
-	mux.HandleFunc("GET /post/{id}", middleware.ChainMiddleware(app.GetPost, []string{"auth"}, app.DB, app.Logger))
-	mux.HandleFunc("POST /update/post/{id}", middleware.ChainMiddleware(app.UpdatePost, []string{"auth"}, app.DB, app.Logger))
-	mux.HandleFunc("POST /comment/create/post/{id}", middleware.ChainMiddleware(app.CreateComment, []string{"auth"}, app.DB, app.Logger))
+	socketManager := socket.NewManager(app.DB, app.Logger)
+
+	mux.HandleFunc("GET /{$}", middleware.ChainMiddleware(Index, []string{}, app.DB, app.Logger, 1))
+	mux.HandleFunc("POST /login", middleware.ChainMiddleware(app.Login, []string{}, app.DB, app.Logger, 1))
+	mux.HandleFunc("POST /register", middleware.ChainMiddleware(app.Register, []string{}, app.DB, app.Logger, 1))
+	mux.HandleFunc("POST /post/create", middleware.ChainMiddleware(app.CreatePost, []string{"auth"}, app.DB, app.Logger, 1))
+	mux.HandleFunc("GET /posts", middleware.ChainMiddleware(app.GetPosts, []string{"auth"}, app.DB, app.Logger, 1))
+	mux.HandleFunc("GET /post/{id}", middleware.ChainMiddleware(app.GetPost, []string{"auth"}, app.DB, app.Logger, 1))
+	mux.HandleFunc("POST /update/post/{id}", middleware.ChainMiddleware(app.UpdatePost, []string{"auth"}, app.DB, app.Logger, 1))
+	mux.HandleFunc("POST /comment/create/post/{id}", middleware.ChainMiddleware(app.CreateComment, []string{"auth"}, app.DB, app.Logger, 1))
+	mux.HandleFunc("GET /comments/post/{id}", middleware.ChainMiddleware(app.GetCommentsByPost, []string{"auth"}, app.DB, app.Logger, 1))
+	mux.HandleFunc("GET /ws", middleware.ChainMiddleware(socketManager.ServeWs, []string{"auth"}, app.DB, app.Logger, 2))
+
+		mux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("../public"))))
+
 
 	return mux
 }

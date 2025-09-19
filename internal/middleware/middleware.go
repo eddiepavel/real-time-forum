@@ -12,7 +12,7 @@ type Middleware func(h http.HandlerFunc, c *sql.DB, l *slog.Logger) http.Handler
 
 // ChainMiddleware applies a sequence of middlewares to an HTTP handler.
 // It combines global middlewares with route-specific middlewares.
-func ChainMiddleware(h http.HandlerFunc, k []string, c *sql.DB, l *slog.Logger) http.HandlerFunc {
+func ChainMiddleware(h http.HandlerFunc, k []string, c *sql.DB, l *slog.Logger, flag int) http.HandlerFunc {
 
 	selectMiddle := map[string]Middleware{
 		"auth":           AuthMiddleware,
@@ -20,16 +20,21 @@ func ChainMiddleware(h http.HandlerFunc, k []string, c *sql.DB, l *slog.Logger) 
 		"logs":           LoggingMiddleware,
 	}
 
-	globalMiddle := []string{"allowedHeaders", "logs"}
+	globalMiddle := []string{"logs", "allowedHeaders"}
 
 	wrapped := h
 
 	fullMiddlewareList := append(globalMiddle, k...)
 
-	for i := 0; i <= len(fullMiddlewareList)-1; i++ {
+	for i := len(fullMiddlewareList) - 1; i >= 0; i-- {
 		key := fullMiddlewareList[i]
 		if mw, exists := selectMiddle[key]; exists {
-			wrapped = mw(wrapped, c, l)
+			if flag == 2 && key == "auth" {
+				wrapped = mw(wrapped, c, l)
+				break
+			} else {
+				wrapped = mw(wrapped, c, l)
+			}
 		} else {
 			fmt.Printf("Middleware %s not found\n", key)
 		}

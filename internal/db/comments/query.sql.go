@@ -125,14 +125,8 @@ SELECT
 FROM comments
 JOIN users ON comments.author = users.uuid
 WHERE comments.post_id = ?
-ORDER BY comments.time DESC LIMIT ? OFFSET ?
+ORDER BY comments.time
 `
-
-type GetCommentsWithAuthorUsernameParams struct {
-	PostID interface{}
-	Limit  int64
-	Offset int64
-}
 
 type GetCommentsWithAuthorUsernameRow struct {
 	ID             int64
@@ -144,8 +138,8 @@ type GetCommentsWithAuthorUsernameRow struct {
 	Time           time.Time
 }
 
-func (q *Queries) GetCommentsWithAuthorUsername(ctx context.Context, arg GetCommentsWithAuthorUsernameParams) ([]GetCommentsWithAuthorUsernameRow, error) {
-	rows, err := q.db.QueryContext(ctx, getCommentsWithAuthorUsername, arg.PostID, arg.Limit, arg.Offset)
+func (q *Queries) GetCommentsWithAuthorUsername(ctx context.Context, postID interface{}) ([]GetCommentsWithAuthorUsernameRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCommentsWithAuthorUsername, postID)
 	if err != nil {
 		return nil, err
 	}

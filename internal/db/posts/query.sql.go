@@ -195,31 +195,15 @@ func (q *Queries) GetPostsWithAuthorUsername(ctx context.Context, arg GetPostsWi
 	return items, nil
 }
 
-const totalPosts = `-- name: TotalPosts :many
+const totalPosts = `-- name: TotalPosts :one
 SELECT COUNT(*) FROM posts
 `
 
-func (q *Queries) TotalPosts(ctx context.Context) ([]int64, error) {
-	rows, err := q.db.QueryContext(ctx, totalPosts)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []int64
-	for rows.Next() {
-		var count int64
-		if err := rows.Scan(&count); err != nil {
-			return nil, err
-		}
-		items = append(items, count)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) TotalPosts(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, totalPosts)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const updatePost = `-- name: UpdatePost :one
