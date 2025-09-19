@@ -30,7 +30,6 @@ func PrivateMessageHandler(event Event, c *Client) error {
 		}
 		return errors.New(errMsg)
 	}
-	fmt.Println(msg.To)
 	recipient, ok := c.manager.clients[msg.To]
 	if !ok {
 		// Optionally, send error back to sender
