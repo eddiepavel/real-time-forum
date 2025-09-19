@@ -23,7 +23,7 @@ func (app *App) RegisterRoutes() http.Handler {
 	mux.HandleFunc("GET /comments/post/{id}", middleware.ChainMiddleware(app.GetCommentsByPost, []string{"auth"}, app.DB, app.Logger, 1))
 	mux.HandleFunc("GET /ws", middleware.ChainMiddleware(socketManager.ServeWs, []string{"auth"}, app.DB, app.Logger, 2))
 
-		mux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("../public"))))
+	mux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("../public"))))
 
 
 	return mux
