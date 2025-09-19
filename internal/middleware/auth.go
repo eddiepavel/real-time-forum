@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"real-time-forum/internal/db"
@@ -23,11 +22,9 @@ func AuthMiddleware(next http.HandlerFunc, connection *sql.DB, logger *slog.Logg
 		token, err := utils.StripTokenFromRequest(r)
 
 		if err != nil {
-			fmt.Println("here2")
 			utils.BadRequest(w, err)
 			return
 		}
-		fmt.Println("here")
 		store := db.New(connection)
 
 		// Retrieve the session
