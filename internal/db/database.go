@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"real-time-forum/internal/db/comments"
+	"real-time-forum/internal/db/messages"
 	"real-time-forum/internal/db/posts"
 	sessionDB "real-time-forum/internal/db/session"
 	"real-time-forum/internal/db/users"
@@ -16,6 +17,7 @@ type Store struct {
 	Posts     *posts.Queries
 	Comments  *comments.Queries
 	SessionDB *sessionDB.Queries
+	Messages  *messages.Queries
 }
 
 func New(db *sql.DB) *Store {
@@ -24,6 +26,7 @@ func New(db *sql.DB) *Store {
 		Posts:     posts.New(db),
 		Comments:  comments.New(db),
 		SessionDB: sessionDB.New(db),
+		Messages:  messages.New(db),
 	}
 }
 
@@ -66,7 +69,6 @@ func migrate(connection *sql.DB) error {
 	if len(migrationFiles) > 0 {
 
 		t, _ := connection.Begin()
-
 
 		t.Exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;`)
 

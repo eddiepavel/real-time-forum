@@ -1,14 +1,18 @@
 package socket
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"real-time-forum/internal/db"
+	"real-time-forum/internal/db/messages"
 	"time"
 )
 
 // PrivateMessageHandler routes a private message to the intended recipient
-func PrivateMessageHandler(event Event, c *Client) error {
+func PrivateMessageHandler(event Event, c *Client, d *sql.DB) error {
 	var msg PrivateMessageEvent
 	if err := json.Unmarshal(event.Payload, &msg); err != nil {
 		return err
@@ -32,7 +36,22 @@ func PrivateMessageHandler(event Event, c *Client) error {
 	}
 	recipient, ok := c.manager.clients[msg.To]
 	if !ok {
-		// Optionally, send error back to sender
+		store := db.New(d)
+		context := context.Background()
+
+		_, err := store.Users.GetUser(context, msg.To)
+
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("uknown user")
+		}
+
+		store.Messages.CreateMessage(context, messages.CreateMessageParams{
+			Message:  msg.Message,
+			FromUser: msg.From,
+			ToUser:   msg.To,
+			Time:     time.Now(),
+		})
+
 		return fmt.Errorf("recipient not online")
 	}
 	// Set the sent time
@@ -54,7 +73,7 @@ type Event struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-type EventHandler func(event Event, c *Client) error
+type EventHandler func(event Event, c *Client, d *sql.DB) error
 
 const (
 	EventSendMessage     = "send_message"
@@ -67,7 +86,7 @@ const (
 // PrivateMessageEvent represents a private message sent from one user to another
 type PrivateMessageEvent struct {
 	From    string    `json:"from_user"`
-	To      string    `json:"to_user"` // recipient's uuid
+	To      string    `json:"to_user"`
 	Message string    `json:"message"`
 	Sent    time.Time `json:"sent"`
 }
@@ -92,7 +111,7 @@ type NewMessageEvent struct {
 }
 
 // BrodCastOnline sends the current list of online users to all clients
-func BrodCastOnline(event Event, c *Client) error {
+func BrodCastOnline(event Event, c *Client, d *sql.DB) error {
 	return c.manager.BroadcastOnlineUsers()
 }
 
