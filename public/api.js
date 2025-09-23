@@ -1,4 +1,3 @@
-
 const API = (() => {
   const KEY = "rtf_token";
 
@@ -55,7 +54,7 @@ const API = (() => {
 
   async function listPosts({ page = 1, limit = 10 } = {}) {
     const search = new URLSearchParams({ page: String(page), limit: String(limit) });
-    return request(`/posts?${search.toString()}`);
+    return request(`/posts?${search.toString()}`, { auth: true });
   }
 
   async function createPost({ title, content, category, image }) {
@@ -63,19 +62,19 @@ const API = (() => {
   }
 
   async function getPost(id) {
-    return request(`/posts/${id}`);
+    return request(`/post/${id}`, { auth: true });
   }
 
   // Comments
   async function listComments(postId, { page = 1, limit = 20 } = {}) {
     const search = new URLSearchParams({ page: String(page), limit: String(limit) });
-    return request(`/posts/${postId}/comments?${search.toString()}`);
+    return request(`/comments/post/${postId}?${search.toString()}`, { auth: true });
   }
 
-  async function addComment(postId, body) {
-    return request(`/posts/${postId}/comments`, {
+  async function addComment(postId, content) {
+    return request(`/comment/create/post/${postId}`, {
       method: "POST",
-      body: { body },
+      body: { content },
       auth: true,
     });
   }
