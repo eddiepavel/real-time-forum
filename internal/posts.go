@@ -33,7 +33,7 @@ type Post struct {
 	Categories string         `json:"category"`
 	Content    string         `json:"content"`
 	Author     *EntityUser    `json:"author"`
-	Time       time.Time      `json:"createad_at"`
+	Time       time.Time      `json:"created_at"`
 	Image      sql.NullString `json:"image"`
 }
 
