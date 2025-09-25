@@ -142,7 +142,9 @@ document.addEventListener('DOMContentLoaded', function () {
         loginbtn.textContent = "Logout";
         registerbtn.style.display = "none";
         newPostBtn.style.display = "block";
+        SocketAPI.connectSocket();
         loginbtn.onclick = () => {
+            if (window.socket) { window.socket.close(); window.socket = null; }
             API.logoutClientOnly();
             loginbtn.textContent = "Login";
             registerbtn.style.display = "block";
@@ -207,6 +209,7 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         try {
             await API.login(usernameInput.value.trim(), passwordInput.value);
+            SocketAPI.connectSocket();
             logindialog.close();
             alert("Logged in!");
             loginbtn.textContent = "Logout";
@@ -214,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
             registerbtn.style.display = "none";
             loginPrompt.style.display = "none";
             loginbtn.onclick = () => {
+                if (window.socket) { window.socket.close(); window.socket = null; }
                 API.logoutClientOnly();
                 loginbtn.textContent = "Login";
                 registerbtn.style.display = "block";
