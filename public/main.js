@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const postsList = document.getElementById('postsList');
     const loginPrompt = document.getElementById('loginPrompt');
     const postProfile = document.getElementById('postProfile');
+    const postProfileContainer = document.getElementById('postProfileContainer');
     const postProfileContent = document.getElementById('postProfileContent');
     const closePostProfile = document.getElementById('closePostProfile');
     const commentsSection = document.getElementById('commentSection');
@@ -49,30 +50,30 @@ document.addEventListener('DOMContentLoaded', function () {
         modalImage.src = '';
     }
     closeImageModal.onclick = hideImageModal;
-    imageModal.onclick = function(e) {
+    imageModal.onclick = function (e) {
         if (e.target === imageModal) hideImageModal();
     };
 
     function showPostProfile(post) {
         currentPost = post;
         author = post.author.canEdit ? "You" : post.author.username;
-        postsList.childNodes.forEach(li => li.classList.add('hidden'));
+        postsList.classList.add('opacity-0');
+        postsList.classList.remove('opacity-100');
         postProfileContent.innerHTML = `
             <div class="flex w-full justify-between bg-white p-8 rounded">
                 <div class="flex-row">
                     <h2 class="text-xl font-bold mb-2">${post.title}</h2>
-                    <p class="text-sm text-gray-500 mb-1">By: ${author} on ${new Date(post.created_at).toLocaleString()}</p>
-                    <p class="mb-2">${post.content}</p>
                     <p class="text-sm text-gray-500">Category: ${post.category.charAt(0).toUpperCase() + post.category.slice(1)}</p>
+                    <p class="text-sm text-gray-500 mb-1">By: ${author} on ${new Date(post.created_at).toLocaleString()}</p>
+                    <p class="mb-2 line-clamp-3 break-all text-ellipsis">${post.content}</p>
                 </div>
                 ${post.image ? `<img src="/images/${post.image.String}" alt="Post Image" class="mt-2 max-w-80 h-auto rounded cursor-pointer" id="postProfileImage">` : ''}
             </div>
         `;
-        postsList.style.maxHeight = postProfileContent.offsetHeight + commentsSection.offsetHeight + "px";
-        posts.style.maxHeight = postProfileContent.offsetHeight + commentsSection.offsetHeight + "px";
         const img = document.getElementById('postProfileImage');
         if (img) img.onclick = () => showImageModal(img.src);
-        // loadComments(post.id);
+        posts.classList.remove('p-6');
+        postsList.childNodes.forEach(li => li.classList.add('hidden'));
         postProfile.classList.remove('-translate-x-full', 'opacity-0');
         postProfile.classList.add('translate-x-0', 'opacity-100');
     }
@@ -80,12 +81,14 @@ document.addEventListener('DOMContentLoaded', function () {
     function hidePostProfile() {
         postProfile.classList.remove('translate-x-0', 'opacity-100');
         postProfile.classList.add('-translate-x-full', 'opacity-0');
-        postsList.childNodes.forEach(li => li.classList.remove('hidden'));
-        postsList.style.maxHeight = 'none';
-        posts.style.maxHeight = 'none';
+        posts.classList.add('p-6');
         currentPost = null;
+        setTimeout(() => {
+            postsList.childNodes.forEach(li => li.classList.remove('hidden'));
+            postsList.classList.remove('opacity-0');
+            postsList.classList.add('opacity-100');
+        }, 200); // match your transition duration
     }
-
     commentForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!currentPost) return;
@@ -107,17 +110,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             posts.forEach(post => {
                 const li = document.createElement('li');
-                li.className = "bg-white p-4 rounded shadow cursor-pointer min-h-64 flex items-center hover:bg-blue-100 transition";
+                li.className = "bg-white p-4 rounded shadow cursor-pointer min-h-64 max-h-64 flex items-center hover:bg-blue-100 transition";
                 author = post.author.canEdit ? "You" : post.author.username;
                 li.innerHTML = `
                     <div class="flex items-center justify-between w-full">
-                        <div class="flex-row items-center">
-                            <h2 class="text-xl font-bold mb-2">${post.title}</h2>
-                            <p class="text-sm text-gray-500 mb-1">By: ${author} on ${new Date(post.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</p>
-                            <p class="mb-2">${post.content}</p>
+                        <div class="flex-row items-center w-1/2 lg:w-3/4">
+                            <h2 class="text-xl font-bold mb-2 text-ellipsis break-all">${post.title}</h2>
                             <p class="text-sm text-gray-500">Category: ${post.category.charAt(0).toUpperCase() + post.category.slice(1)}</p>
+                            <p class="text-sm text-gray-500 mb-1">By: ${author} on ${new Date(post.created_at).toLocaleString()}</p>
+                            <p class="mb-2 line-clamp-3 break-all text-ellipsis">${post.content}</p>
                         </div>
-                        ${post.image ? `<img src="/images/${post.image.String}" alt="Post Image" class="mt-2 max-w-48 h-auto rounded">` : ''}
+                        ${post.image ? `<img src="/images/${post.image.String}" alt="Post Image" class="mt-2 max-w-48 max-h-48 rounded">` : ''}
                     </div>
                 `;
                 li.addEventListener('click', () => showPostProfile(post));
