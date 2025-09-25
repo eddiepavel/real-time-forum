@@ -46,7 +46,7 @@ func (m *Manager) manageEventHandlers() {
 
 func (m *Manager) routeEvent(event Event, c *Client) error {
 	if handler, ok := m.handlers[event.Type]; ok {
-		if err := handler(event, c); err != nil {
+		if err := handler(event, c, m.DB); err != nil {
 			return err
 		}
 		return nil

@@ -1,8 +1,11 @@
 package socket
 
 import (
+	"context"
 	"encoding/json"
 	"log"
+	"real-time-forum/internal/db"
+	"real-time-forum/internal/db/messages"
 	"real-time-forum/internal/db/users"
 	"time"
 
@@ -127,6 +130,19 @@ func (c *Client) writeMessages() {
 				}
 				return
 			}
+			store := db.New(c.manager.DB)
+			var messageP PrivateMessageEvent
+			if err := json.Unmarshal(message.Payload, &messageP); err != nil {
+
+				return
+			}
+			context := context.Background()
+			store.Messages.CreateMessage(context, messages.CreateMessageParams{
+				Message:  messageP.Message,
+				FromUser: messageP.From,
+				ToUser:   messageP.To,
+				Time:     time.Now(),
+			})
 		case <-ticker.C:
 			if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				if c.manager != nil && c.manager.Logger != nil {

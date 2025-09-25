@@ -36,4 +36,8 @@ SELECT
     posts.image_path
 FROM posts
 JOIN users ON posts.author = users.uuid
-ORDER BY time DESC LIMIT ? OFFSET ?
+ORDER BY time DESC LIMIT ? OFFSET ?;
+
+
+-- name: DeletePost :exec
+DELETE FROM posts WHERE id = ?;

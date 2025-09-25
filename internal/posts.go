@@ -321,3 +321,40 @@ func (app *App) GetPost(w http.ResponseWriter, r *http.Request) {
 	})
 
 }
+
+func (app *App) DeletePost(w http.ResponseWriter, r *http.Request) {
+	if r.PathValue("id") == "" {
+		utils.BadRequest(w, errors.New("paramater mssing"))
+		return
+	}
+
+	id, err := utils.ConvertPathValueNumber(r, "id")
+
+	if err != nil {
+		utils.BadRequest(w, errors.New("bad bad bad"))
+		return
+	}
+
+	user := r.Context().Value(middleware.UserKey).(*users.User)
+
+	store := db.New(app.DB)
+
+	post, err := store.Posts.GetPostById(r.Context(), id)
+
+	if err == sql.ErrNoRows {
+		utils.NotFound(w)
+		return
+	}
+
+	if post.Author != user.Uuid {
+		utils.Unauthorized(w, "you are not worthly")
+		return
+	}
+
+	if err := store.Posts.DeletePost(r.Context(), id); err != nil {
+		utils.Internal(w, errors.New("error making things"))
+		return
+	}
+
+	utils.OK(w, "ok")
+}

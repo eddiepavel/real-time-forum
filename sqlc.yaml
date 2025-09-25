@@ -28,3 +28,10 @@ sql:
       go:
         package: "sessionDB"
         out: "/internal/db/session/"
+  - engine: "sqlite"
+    queries: ["/internal/db/messages/query.sql"]
+    schema: ["/internal/db/messages/schema.sql", "/internal/db/users/schema.sql"]
+    gen:
+      go:
+        package: "messages"
+        out: "/internal/db/messages/"
