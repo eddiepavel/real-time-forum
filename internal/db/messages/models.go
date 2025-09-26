@@ -15,6 +15,7 @@ type Message struct {
 	FromUser string
 	ToUser   string
 	Time     time.Time
+	Status   sql.NullInt64
 	Foreign  interface{}
 }
 

@@ -20,10 +20,12 @@ func (app *App) RegisterRoutes() http.Handler {
 	mux.HandleFunc("DELETE /post/delete/{id}", middleware.ChainMiddleware(app.DeletePost, []string{"auth"}, app.DB, app.Logger, 1))
 	mux.HandleFunc("GET /posts", middleware.ChainMiddleware(app.GetPosts, []string{"auth"}, app.DB, app.Logger, 1))
 	mux.HandleFunc("GET /post/{id}", middleware.ChainMiddleware(app.GetPost, []string{"auth"}, app.DB, app.Logger, 1))
-	mux.HandleFunc("POST /update/post/{id}", middleware.ChainMiddleware(app.UpdatePost, []string{"auth"}, app.DB, app.Logger, 1))
+	mux.HandleFunc("PUT /update/post/{id}", middleware.ChainMiddleware(app.UpdatePost, []string{"auth"}, app.DB, app.Logger, 1))
 	mux.HandleFunc("POST /comment/create/post/{id}", middleware.ChainMiddleware(app.CreateComment, []string{"auth"}, app.DB, app.Logger, 1))
 	mux.HandleFunc("GET /comments/post/{id}", middleware.ChainMiddleware(app.GetCommentsByPost, []string{"auth"}, app.DB, app.Logger, 1))
 	mux.HandleFunc("GET /ws", middleware.ChainMiddleware(socketManager.ServeWs, []string{"auth"}, app.DB, app.Logger, 2))
+	mux.HandleFunc("GET /messages/unread", middleware.ChainMiddleware(app.GetUnreadMessages, []string{"auth"}, app.DB, app.Logger, 1))
+	mux.HandleFunc("GET /mesages/{from_user}/{to_user}", middleware.ChainMiddleware(app.GetMessagesFromTo, []string{}, app.DB, app.Logger, 1))
 
 	return mux
 }

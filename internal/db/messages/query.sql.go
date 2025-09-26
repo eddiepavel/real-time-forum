@@ -7,15 +7,51 @@ package messages
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
+const countUnreadUser = `-- name: CountUnreadUser :many
+SELECT id, message, from_user, to_user, time, status, "foreign" FROM messages WHERE to_user = ? AND status = 0
+`
+
+func (q *Queries) CountUnreadUser(ctx context.Context, toUser string) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, countUnreadUser, toUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Message
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.Message,
+			&i.FromUser,
+			&i.ToUser,
+			&i.Time,
+			&i.Status,
+			&i.Foreign,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createMessage = `-- name: CreateMessage :one
 INSERT INTO messages (
-    message, from_user, to_user, time
+    message, from_user, to_user, time, status
 ) VALUES (
-    ?, ?, ?, ?
-) RETURNING id, message, from_user, to_user, time, "foreign"
+    ?, ?, ?, ?, ?
+) RETURNING id, message, from_user, to_user, time, status, "foreign"
 `
 
 type CreateMessageParams struct {
@@ -23,6 +59,7 @@ type CreateMessageParams struct {
 	FromUser string
 	ToUser   string
 	Time     time.Time
+	Status   sql.NullInt64
 }
 
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error) {
@@ -31,6 +68,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		arg.FromUser,
 		arg.ToUser,
 		arg.Time,
+		arg.Status,
 	)
 	var i Message
 	err := row.Scan(
@@ -39,6 +77,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		&i.FromUser,
 		&i.ToUser,
 		&i.Time,
+		&i.Status,
 		&i.Foreign,
 	)
 	return i, err
@@ -56,16 +95,19 @@ SELECT
 FROM messages m
 JOIN users sender ON m.from_user = sender.uuid
 JOIN users receiver ON m.to_user = receiver.uuid
-WHERE m.from_user = ? AND m.to_user = ?
-ORDER BY m.time DESC
+WHERE (m.from_user = ? AND m.to_user = ?)
+   OR (m.from_user = ? AND m.to_user = ?)
+ORDER BY m.time ASC
 LIMIT ? OFFSET ?
 `
 
 type GetMessagesFromToUsersParams struct {
-	FromUser string
-	ToUser   string
-	Limit    int64
-	Offset   int64
+	FromUser   string
+	ToUser     string
+	FromUser_2 string
+	ToUser_2   string
+	Limit      int64
+	Offset     int64
 }
 
 type GetMessagesFromToUsersRow struct {
@@ -82,6 +124,8 @@ func (q *Queries) GetMessagesFromToUsers(ctx context.Context, arg GetMessagesFro
 	rows, err := q.db.QueryContext(ctx, getMessagesFromToUsers,
 		arg.FromUser,
 		arg.ToUser,
+		arg.FromUser_2,
+		arg.ToUser_2,
 		arg.Limit,
 		arg.Offset,
 	)

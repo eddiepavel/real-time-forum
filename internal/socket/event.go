@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"real-time-forum/internal/db"
 	"real-time-forum/internal/db/messages"
 	"time"
 )
@@ -36,16 +35,15 @@ func PrivateMessageHandler(event Event, c *Client, d *sql.DB) error {
 	}
 	recipient, ok := c.manager.clients[msg.To]
 	if !ok {
-		store := db.New(d)
 		context := context.Background()
 
-		_, err := store.Users.GetUser(context, msg.To)
+		_, err := c.store.Users.GetUser(context, msg.To)
 
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("uknown user")
 		}
 
-		store.Messages.CreateMessage(context, messages.CreateMessageParams{
+		c.store.Messages.CreateMessage(context, messages.CreateMessageParams{
 			Message:  msg.Message,
 			FromUser: msg.From,
 			ToUser:   msg.To,
