@@ -2,6 +2,7 @@ package socket
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"log"
 	"real-time-forum/internal/db"
@@ -21,6 +22,7 @@ type Client struct {
 	username   string
 	isOnline   bool
 	egress     chan Event
+	store      *db.Store
 }
 
 var (
@@ -37,6 +39,7 @@ func NewClient(conn *websocket.Conn, manager *Manager, user *users.User) *Client
 		username:   user.Username.(string),
 		isOnline:   true,
 		egress:     make(chan Event, 16),
+		store:      db.New(manager.DB),
 	}
 }
 
@@ -130,18 +133,19 @@ func (c *Client) writeMessages() {
 				}
 				return
 			}
-			store := db.New(c.manager.DB)
+
 			var messageP PrivateMessageEvent
 			if err := json.Unmarshal(message.Payload, &messageP); err != nil {
 
 				return
 			}
 			context := context.Background()
-			store.Messages.CreateMessage(context, messages.CreateMessageParams{
+			c.store.Messages.CreateMessage(context, messages.CreateMessageParams{
 				Message:  messageP.Message,
 				FromUser: messageP.From,
 				ToUser:   messageP.To,
 				Time:     time.Now(),
+				Status:   sql.NullInt64{Int64: 1, Valid: true},
 			})
 		case <-ticker.C:
 			if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {

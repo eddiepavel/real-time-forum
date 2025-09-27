@@ -1,8 +1,8 @@
 -- name: CreateMessage :one
 INSERT INTO messages (
-    message, from_user, to_user, time
+    message, from_user, to_user, time, status
 ) VALUES (
-    ?, ?, ?, ?
+    ?, ?, ?, ?, ?
 ) RETURNING *;
 
 -- name: GetMessagesFromToUsers :many
@@ -17,6 +17,10 @@ SELECT
 FROM messages m
 JOIN users sender ON m.from_user = sender.uuid
 JOIN users receiver ON m.to_user = receiver.uuid
-WHERE m.from_user = ? AND m.to_user = ?
-ORDER BY m.time DESC
+WHERE (m.from_user = ? AND m.to_user = ?)
+   OR (m.from_user = ? AND m.to_user = ?)
+ORDER BY m.time ASC
 LIMIT ? OFFSET ?;
+
+-- name: CountUnreadUser :many
+SELECT * FROM messages WHERE to_user = ? AND status = 0;
