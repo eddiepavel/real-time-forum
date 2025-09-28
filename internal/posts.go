@@ -29,6 +29,7 @@ type Comments struct {
 }
 
 type Post struct {
+	ID         int64          `json:"id,omitempty"`
 	Title      string         `json:"title"`
 	Categories string         `json:"category"`
 	Content    string         `json:"content"`
@@ -171,6 +172,7 @@ func (app *App) GetPosts(w http.ResponseWriter, r *http.Request) {
 			canEdit = true
 		}
 		postList = append(postList, Post{
+			ID:         p.ID,
 			Title:      p.Title,
 			Categories: p.Categories,
 			Content:    p.Content,

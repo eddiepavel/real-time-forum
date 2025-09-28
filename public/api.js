@@ -78,12 +78,26 @@ const API = (() => {
       auth: true,
     });
   }
-  
+
+  async function editPost(id, { title, content, category }) {
+    return request(`/post/${id}/edit`, {
+      method: "PUT",
+      body: { title, content, category },
+      auth: true,
+    });
+  }
+
+  async function deletePost(id) {
+    return request(`/post/${id}/delete`, {
+      method: "DELETE",
+      auth: true,
+    });
+  }
 
   function logoutClientOnly() {
     // backend /logout not implemented yet; just clear locally
     clearToken();
   }
 
-  return { login, register, getToken, logoutClientOnly, listPosts, createPost, getPost, listComments, addComment,};
+  return { login, register, getToken, logoutClientOnly, listPosts, createPost, getPost, listComments, addComment, editPost, deletePost };
 })();

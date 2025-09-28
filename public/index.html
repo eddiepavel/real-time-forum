@@ -11,7 +11,8 @@
 <body class="bg-slate-900 h-screen">
     <div class="flex">
         <div class="flex-col w-3/4">
-            <nav class="flex items-center justify-between rounded-br-2xl py-10 bg-slate-400 mr-2">
+            <nav
+                class="flex items-center justify-between rounded-br-2xl py-10 bg-slate-400 fixed top-0 shadow-2xl -left-2 w-3/4 z-50">
                 <h1 class="text-4xl font-bold text-slate-100 ml-10 [-webkit-text-stroke:1px_black]">Real-Time Forum</h1>
                 <div class="flex space-x-2 mr-6">
                     <button id="loginbtn"
@@ -20,23 +21,30 @@
                         class="px-4 py-2 bg-slate-900 text-slate-200 rounded cursor-pointer hover:bg-slate-700 transition duration-300">Register</button>
                 </div>
             </nav>
-            <div id="status" class="flex items-center justify-end text-slate-200 px-10 py-4">
+            <div id="status" class="flex items-center justify-end text-slate-200 px-10 mt-30 py-4">
                 <button id="newpostbtn"
                     class="hidden px-4 py-2 bg-slate-600 text-slate-200 rounded cursor-pointer hover:bg-slate-700 transition duration-300">
                     New Post
                 </button>
             </div>
-            <div id="posts" class="transition-all duration-500 overflow-hidden relative bg-slate-400 m-2 -mt-0 p-6 rounded-lg shadow-lg">
+            <div id="posts"
+                class="transition-all duration-500 overflow-hidden relative bg-slate-700 mr-2 p-6 rounded-r-xl">
                 <h1 id="loginPrompt" class="text-3xl font-bold p-6 text-slate-100">You need to log in to see the posts!
                 </h1>
-                <ul id="postsList" class="space-y-4 h-full transition-opacity duration-300">
+                <ul id="postsList" class="space-y-4 h-auto transition-opacity duration-300 px-2">
                     <!-- Posts will be dynamically added here -->
                 </ul>
                 <div id="postProfile"
                     class="transition-all duration-500 ease-in-out transform -translate-x-full opacity-0">
-                    <div id="postProfileContainer" class="relative bg-slate-400 w-full h-full flex flex-col rounded-lg">
-                        <button id="closePostProfile"
-                            class="absolute top-4 right-8 px-3 py-1 bg-slate-500 text-white rounded hover:bg-slate-600 transition duration-300">Close</button>
+                    <div id="postProfileContainer" class="relative bg-slate-700 w-full h-full flex flex-col rounded-lg">
+                        <div class="absolute top-4 right-8">
+                            <button id="deletePostBtn"
+                                class="relative px-3 py-1 bg-rose-600 text-white rounded hover:bg-rose-700 transition duration-300">Delete</button>
+                            <button id="editPostBtn"
+                                class="relative px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition duration-300">Edit</button>
+                            <button id="closePostProfile"
+                                class="relative px-3 py-1 bg-slate-500 text-white rounded hover:bg-slate-600 transition duration-300">Close</button>
+                        </div>
                         <div id="postProfileContent" class="p-16 flex"></div>
                         <div id="commentSection" class="border-t bg-white/20 w-full p-8">
                             <h3 class="text-lg font-bold mb-2">Comments</h3>
@@ -44,19 +52,22 @@
                             <form id="commentForm" class="flex space-x-2">
                                 <input type="text" id="commentInput" placeholder="Add a comment..."
                                     class="flex-1 px-2 py-1 border rounded bg-white" />
-                                <button type="submit" class="px-3 py-1 bg-slate-700 text-white rounded">Send</button>
+                                <button type="submit"
+                                    class="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-800 transition duration-300">Send</button>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div id="chat" class="bg-amber-100 min-h-full w-1/4 p-6 rounded-lg shadow-lg">
+        <div id="chat" class="bg-amber-100 w-1/4 p-6 mt-2 rounded-lg shadow-lg fixed top-0 right-0 h-screen">
             chat
         </div>
     </div>
-    <dialog id="loginDialog"
-        class="rounded-lg p-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg">
+
+    <!-- Dialogs -->
+
+    <dialog id="loginDialog" class="rounded-lg p-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg opacity-0 scale-90 pointer-events-none transition-all duration-300">
         <form method="dialog" class="flex flex-col space-y-4">
             <h2 class="text-2xl font-bold mb-4">Login</h2>
             <input type="text" id="login_username" placeholder="Username/Email"
@@ -72,7 +83,7 @@
         </form>
     </dialog>
     <dialog id="registerDialog"
-        class="rounded-lg p-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg">
+        class="rounded-lg p-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg opacity-0 scale-90 pointer-events-none transition-all duration-300">
         <form method="dialog" class="flex flex-col space-y-4">
             <h2 class="text-2xl font-bold mb-4">Register</h2>
             <input type="text" id="reg_username" placeholder="Username"
@@ -91,23 +102,59 @@
             </div>
         </form>
     </dialog>
-    <dialog id="newPostDialog"
-        class="rounded-lg p-6 absolute max-w-1/2 w-[32rem] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg">
-        <form method="dialog" class="flex flex-col space-y-4">
-            <h2 class="text-2xl font-bold mb-4">New Post</h2>
+    <dialog id="editPostDialog"
+        class="rounded-lg p-8 absolute max-w-2xl w-[40rem] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg opacity-0 scale-90 pointer-events-none transition-all duration-300">
+        <form method="dialog" class="flex flex-col space-y-6">
+            <h2 class="text-2xl font-bold mb-4">Edit Post</h2>
             <input type="text" id="post_title" placeholder="Title"
-                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <textarea id="post_content" placeholder="Content" rows="4"
-                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                class="px-6 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg">
+            <textarea id="post_content" placeholder="Content" rows="8"
+                class="px-6 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"></textarea>
             <select id="post_category"
-                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="px-6 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg">
+                <option value="general" selected>General</option>
+                <option value="sports">Sports</option>
+                <option value="gaming">Gaming</option>
+                <option value="music">Music</option>
+            </select>
+            <div class="flex justify-end space-x-4">
+                <button type="submit"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-300">Post</button>
+                <button type="button" id="cancelEditPostBtn"
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition duration-300">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="deletePostDialog"
+        class="rounded-lg p-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg opacity-0 scale-90 pointer-events-none transition-all duration-300">
+        <form method="dialog" class="flex flex-col space-y-4">
+            <h2 class="text-2xl font-bold mb-4">Confirm Deletion</h2>
+            <p>Are you sure you want to delete this post?</p>
+            <div class="flex justify-end space-x-4">
+                <button type="submit" id="confirmDeletePostBtn"
+                    class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition duration-300">Delete</button>
+                <button type="button" id="cancelDeletePostBtn"
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition duration-300">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="newPostDialog"
+        class="rounded-lg p-8 absolute max-w-2xl w-[40rem] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg opacity-0 scale-90 pointer-events-none transition-all duration-300">
+        <form method="dialog" class="flex flex-col space-y-6">
+            <h2 class="text-2xl font-bold mb-4">New Post</h2>
+            <input type="text" id="new_post_title" placeholder="Title"
+                class="px-6 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg">
+            <textarea id="new_post_content" placeholder="Content" rows="8"
+                class="px-6 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"></textarea>
+            <select id="new_post_category"
+                class="px-6 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg">
                 <option value="general" selected>General</option>
                 <option value="sports">Sports</option>
                 <option value="gaming">Gaming</option>
                 <option value="music">Music</option>
             </select>
             <input type="file" id="post_image" accept="image/*"
-                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="px-6 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg" />
             <div class="flex justify-end space-x-4">
                 <button type="submit"
                     class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-300">Post</button>
@@ -118,7 +165,7 @@
     </dialog>
     <div id="imageModal"
         class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-300 opacity-0 pointer-events-none">
-        <img id="modalImage" src="" alt="Full Image"
+        <img id="modalImage" src=""
             class="max-h-[90vh] max-w-[90vw] rounded shadow-xl border-4 border-white" />
         <button id="closeImageModal"
             class="absolute top-8 right-8 w-10 h-10 flex items-center justify-center bg-slate-800 text-white rounded-full text-2xl hover:bg-slate-600 transition"

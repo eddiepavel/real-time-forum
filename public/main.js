@@ -13,13 +13,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const regConfirmPasswordInput = document.getElementById('confirm_password');
     const regCancelBtn = document.getElementById('cancelbtn2');
     const newPostBtn = document.getElementById('newpostbtn');
-    const posts = document.getElementById('posts');
+    const postsdiv = document.getElementById('posts');
+    const editPostDialog = document.getElementById('editPostDialog');
+    const editPostForm = editPostDialog?.querySelector('form');
+    const deletePostBtn = document.getElementById('deletePostBtn');
+    const editPostBtn = document.getElementById('editPostBtn');
     const newPostDialog = document.getElementById('newPostDialog');
     const newPostForm = newPostDialog?.querySelector('form');
+    const deletePostDialog = document.getElementById('deletePostDialog');
+    const deletePostConfirmBtn = document.getElementById('confirmDeletePostBtn');
+    const deletePostCancelBtn = document.getElementById('cancelDeletePostBtn');
     const cancelPostBtn = document.getElementById('cancelPostBtn');
     const postTitleInput = document.getElementById('post_title');
     const postBodyInput = document.getElementById('post_content');
     const postCategoryInput = document.getElementById('post_category');
+    const newpostTitleInput = document.getElementById('new_post_title');
+    const newpostBodyInput = document.getElementById('new_post_content');
+    const newpostCategoryInput = document.getElementById('new_post_category');
     const postImageInput = document.getElementById('post_image');
     const postsList = document.getElementById('postsList');
     const loginPrompt = document.getElementById('loginPrompt');
@@ -35,6 +45,22 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentPost = null;
 
     // Modal logic
+    function showDialog(dialog) {
+        dialog.showModal();
+        setTimeout(() => {
+            dialog.classList.remove('opacity-0', 'scale-90', 'pointer-events-none');
+            dialog.classList.add('opacity-100', 'scale-100');
+        }, 10);
+    }
+
+    function hideDialog(dialog) {
+        dialog.classList.remove('opacity-100', 'scale-100');
+        dialog.classList.add('opacity-0', 'scale-90', 'pointer-events-none');
+        setTimeout(() => {
+            dialog.close();
+        }, 300); // match transition duration
+    }
+
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
     const closeImageModal = document.getElementById('closeImageModal');
@@ -57,6 +83,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function showPostProfile(post) {
         currentPost = post;
         author = post.author.canEdit ? "You" : post.author.username;
+        if (!post.author.canEdit) {
+            editPostBtn.style.display = "none";
+            deletePostBtn.style.display = "none";
+        }
         postsList.classList.add('opacity-0');
         postsList.classList.remove('opacity-100');
         postProfileContent.innerHTML = `
@@ -70,9 +100,50 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${post.image ? `<img src="/images/${post.image.String}" alt="Post Image" class="mt-2 max-w-80 h-auto rounded cursor-pointer" id="postProfileImage">` : ''}
             </div>
         `;
+        postsdiv.style.height = (postProfileContent.scrollHeight + commentsSection.scrollHeight + 32) + "px";
+        editPostBtn.onclick = () => {
+            showDialog(editPostDialog);
+            const cancelEditPostBtn = document.getElementById('cancelEditPostBtn');
+            postTitleInput.value = post.title;
+            postBodyInput.value = post.content;
+            postCategoryInput.value = post.category;
+            cancelEditPostBtn.onclick = () => hideDialog(editPostDialog);
+            editPostForm.onsubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    await API.editPost(post.id, {
+                        title: postTitleInput.value.trim(),
+                        content: postBodyInput.value.trim(),
+                        category: postCategoryInput.value,
+                    });
+                    hideDialog(editPostDialog);
+                    alert("Post edited successfully!");
+                    getPosts();
+                    editPostForm.reset();
+                    hidePostProfile();
+                } catch (err) {
+                    alert("Failed to edit post: " + err.message);
+                }
+            };
+        };
+        deletePostBtn.onclick = async () => {
+            showDialog(deletePostDialog);
+            deletePostConfirmBtn.onclick = async () => {
+                try {
+                    await API.deletePost(post.id);
+                    hideDialog(deletePostDialog);
+                    alert("Post deleted successfully!");
+                    getPosts();
+                    hidePostProfile();
+                } catch (err) {
+                    alert("Failed to delete post: " + err.message);
+                }
+            };
+            deletePostCancelBtn.onclick = () => hideDialog(deletePostDialog);
+        };
         const img = document.getElementById('postProfileImage');
         if (img) img.onclick = () => showImageModal(img.src);
-        posts.classList.remove('p-6');
+        postsdiv.classList.remove('p-6');
         postsList.childNodes.forEach(li => li.classList.add('hidden'));
         postProfile.classList.remove('-translate-x-full', 'opacity-0');
         postProfile.classList.add('translate-x-0', 'opacity-100');
@@ -81,14 +152,16 @@ document.addEventListener('DOMContentLoaded', function () {
     function hidePostProfile() {
         postProfile.classList.remove('translate-x-0', 'opacity-100');
         postProfile.classList.add('-translate-x-full', 'opacity-0');
-        posts.classList.add('p-6');
+        postsdiv.classList.add('p-6');
         currentPost = null;
         setTimeout(() => {
             postsList.childNodes.forEach(li => li.classList.remove('hidden'));
             postsList.classList.remove('opacity-0');
             postsList.classList.add('opacity-100');
+            postsdiv.style.height = postsList.scrollHeight + 48 + "px";
         }, 200); // match your transition duration
     }
+
     commentForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!currentPost) return;
@@ -126,6 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 li.addEventListener('click', () => showPostProfile(post));
                 postsList.appendChild(li);
             });
+            postsdiv.style.height = postsList.scrollHeight + 48 + "px";
         }).catch(err => {
             // alert("Failed to load posts: " + err.message);
             if (err.message.includes("Authentication")) {
@@ -163,57 +237,69 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     newPostBtn.addEventListener('click', function () {
-        newPostDialog.showModal();
+        showDialog(newPostDialog);
     });
 
     cancelPostBtn.addEventListener('click', function () {
-        newPostDialog.close();
+        hideDialog(newPostDialog);
     });
 
     newPostForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const file = postImageInput.files[0];
-        if (!file) {
-            alert("Please select an image.");
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = async function (event) {
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = async function (event) {
+                try {
+                    await API.createPost({
+                        title: newpostTitleInput.value.trim(),
+                        content: newpostBodyInput.value.trim(),
+                        category: newpostCategoryInput.value,
+                        image: event.target.result
+                    });
+                    hideDialog(newPostDialog);
+                    alert("Post created successfully!");
+                    getPosts();
+                    newPostForm.reset();
+                } catch (err) {
+                    alert("Failed to create post: " + err.message);
+                }
+            };
+            reader.onerror = function () {
+                alert("Failed to read image file.");
+            };
+            reader.readAsDataURL(file);
+        } else {
             try {
                 await API.createPost({
                     title: postTitleInput.value.trim(),
                     content: postBodyInput.value.trim(),
-                    category: postCategoryInput.value,
-                    image: event.target.result
+                    category: postCategoryInput.value
                 });
-                newPostDialog.close();
+                hideDialog(newPostDialog);
                 alert("Post created successfully!");
                 getPosts();
                 newPostForm.reset();
             } catch (err) {
                 alert("Failed to create post: " + err.message);
             }
-        };
-        reader.onerror = function () {
-            alert("Failed to read image file.");
-        };
-        reader.readAsDataURL(file);
+        }
     });
 
     loginbtn.addEventListener('click', function () {
-        logindialog.showModal();
+        showDialog(logindialog);
     });
     const closebtn = document.getElementById('cancelbtn1');
 
     closebtn.addEventListener('click', function () {
-        logindialog.close();
+        hideDialog(logindialog);
     });
     loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
             await API.login(usernameInput.value.trim(), passwordInput.value);
             SocketAPI.connectSocket();
-            logindialog.close();
+            hideDialog(logindialog);
             alert("Logged in!");
             loginbtn.textContent = "Logout";
             newPostBtn.style.display = "block";
@@ -227,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 newPostBtn.style.display = "none";
                 postsList.innerHTML = '';
                 loginPrompt.style.display = "block";
-                loginbtn.onclick = () => logindialog.showModal();
+                loginbtn.onclick = () => showDialog(logindialog);
             };
             getPosts();
         } catch (err) {
@@ -236,11 +322,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     registerbtn.addEventListener('click', function () {
-        registerDialog.showModal();
+        showDialog(registerDialog);
     });
 
     regCancelBtn.addEventListener('click', function () {
-        registerDialog.close();
+        hideDialog(registerDialog);
     });
 
     registerForm?.addEventListener('submit', async (e) => {
@@ -256,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 password: regPasswordInput.value,
                 confirm_password: regConfirmPasswordInput.value
             });
-            registerDialog.close();
+            hideDialog(registerDialog);
             alert("Registered successfully!");
         } catch (err) {
             alert("Registration failed: " + err.message);
