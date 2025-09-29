@@ -72,7 +72,7 @@ func (app *App) GetMessagesFromTo(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * limit
 
-	if r.PathValue("from_user") == "" && r.PathValue("to_user") == "" {
+	if r.PathValue("to_user") == "" {
 		utils.BadRequest(w, errors.New("path values missing"))
 		return
 	}
