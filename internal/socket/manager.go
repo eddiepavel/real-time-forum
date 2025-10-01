@@ -40,7 +40,7 @@ func NewManager(db *sql.DB, l *slog.Logger) *Manager {
 }
 
 func (m *Manager) manageEventHandlers() {
-	m.handlers[EventBroadCastOnline] = BrodCastOnline
+	m.handlers[EventBroadCastOnline] = BroadCastOnline
 	m.handlers[EventPrivateMessage] = PrivateMessageHandler
 }
 
@@ -99,5 +99,5 @@ func checkOrigin(r *http.Request) bool {
 
 	origin := r.Header.Get("Origin")
 
-	return origin == "http://localhost:8000"
+	return origin != "http://localhost:8000"
 }

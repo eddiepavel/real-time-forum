@@ -79,8 +79,9 @@ func (app *App) GetMessagesFromTo(w http.ResponseWriter, r *http.Request) {
 
 	user := r.Context().Value(middleware.UserKey).(*users.User)
 
-	if r.PathValue("from_user") != user.Uuid {
+	if user == nil {
 		utils.Unauthorized(w, "what ?")
+		return
 	}
 
 	store := db.New(app.DB)

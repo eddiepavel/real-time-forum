@@ -132,11 +132,13 @@ func (app *App) GetCommentsByPost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		commentList = append(commentList, Comments{
+			Id:      comment.ID,
 			Content: comment.Content.(string),
 			Author: &EntityUser{
 				Username: comment.AuthorUsername.(string),
 				CanEdit:  canEdit,
 			},
+			Time: comment.Time,
 		})
 
 	}
