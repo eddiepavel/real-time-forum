@@ -33,7 +33,7 @@ const API = (() => {
       const details = json?.error?.details;
       throw new Error(Array.isArray(details) ? `${msg}: ${details.join(", ")}` : msg);
     }
-    return json.data;
+    return json;
   }
 
   async function login(authvalue, password) {
@@ -41,8 +41,8 @@ const API = (() => {
       method: "POST",
       body: { authvalue, password }, // matches PayloadLogin 
     });
-    setToken(data.token);
-    return data; // { token, expires }
+    setToken(data.data.token);
+    return data.data; // { token, expires }
   }
 
   async function register({ username, email, password, confirm_password }) {

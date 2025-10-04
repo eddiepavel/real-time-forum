@@ -42,6 +42,41 @@ document.addEventListener('DOMContentLoaded', function () {
     const commentForm = document.getElementById('commentForm');
     const commentInput = document.getElementById('commentInput');
 
+    let totalPosts = 0;
+    let currentPage = 0;
+    let currentPosts = 0;
+
+    function updatePostsDivHeight() {
+        if (postProfile.classList.contains('translate-x-0') && postProfileContainer) {
+            // Profile view is open
+            requestAnimationFrame(() => {
+                postsdiv.style.height = postProfileContent.offsetHeight + commentsSection.offsetHeight + "px";
+            });
+        } else if (postsList) {
+            // List view
+            postsdiv.style.height = postsList.offsetHeight + 48 + "px";
+        }
+    }
+
+    function isScrolledToBottom(threshold = 15) {
+        return (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - threshold);
+    }
+
+    let lastScrollY = window.scrollY;
+
+    window.addEventListener('scroll', () => {
+        if (totalPosts <= 10 || currentPosts < 10 || postProfile.classList.contains('translate-x-0') && postProfileContainer) return;
+
+        const currentScrollY = window.scrollY;
+        // Only trigger if user is scrolling down
+        if (currentScrollY > lastScrollY && isScrolledToBottom()) {
+            setTimeout(() => {
+                getPosts(currentPage + 1);
+            }, 200);
+        }
+        lastScrollY = currentScrollY;
+    });
+
     let currentPost = null;
 
     // Modal logic
@@ -82,6 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function showPostProfile(post) {
         currentPost = post;
+        loadComments(post.id);
         author = post.author.canEdit ? "You" : post.author.username;
         if (!post.author.canEdit) {
             editPostBtn.style.display = "none";
@@ -100,7 +136,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${post.image ? `<img src="/images/${post.image.String}" alt="Post Image" class="mt-2 max-w-80 h-auto rounded cursor-pointer" id="postProfileImage">` : ''}
             </div>
         `;
-        postsdiv.style.height = (postProfileContent.scrollHeight + commentsSection.scrollHeight + 32) + "px";
         editPostBtn.onclick = () => {
             showDialog(editPostDialog);
             const cancelEditPostBtn = document.getElementById('cancelEditPostBtn');
@@ -144,9 +179,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const img = document.getElementById('postProfileImage');
         if (img) img.onclick = () => showImageModal(img.src);
         postsdiv.classList.remove('p-6');
-        postsList.childNodes.forEach(li => li.classList.add('hidden'));
+        Array.from(postsList.children).forEach(li => li.classList.add('hidden'));
         postProfile.classList.remove('-translate-x-full', 'opacity-0');
         postProfile.classList.add('translate-x-0', 'opacity-100');
+        updatePostsDivHeight();
     }
 
     function hidePostProfile() {
@@ -155,10 +191,11 @@ document.addEventListener('DOMContentLoaded', function () {
         postsdiv.classList.add('p-6');
         currentPost = null;
         setTimeout(() => {
-            postsList.childNodes.forEach(li => li.classList.remove('hidden'));
+            Array.from(postsList.children).forEach(li => li.classList.remove('hidden'));
+            commentsList.innerHTML = '';
             postsList.classList.remove('opacity-0');
             postsList.classList.add('opacity-100');
-            postsdiv.style.height = postsList.scrollHeight + 48 + "px";
+            updatePostsDivHeight();
         }, 200); // match your transition duration
     }
 
@@ -167,21 +204,47 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!currentPost) return;
         const text = commentInput.value.trim();
         if (!text) return;
-        await CommentsAPI.addComment(currentPost.id, text);
+        await API.addComment(currentPost.id, text);
         commentInput.value = '';
         loadComments(currentPost.id);
     });
 
+    const loadComments = async (postId) => {
+        console.log("Loading comments for post ID:", postId);
+        API.listComments(postId).then(comments => {
+            commentsList.innerHTML = '';
+            if (!comments || comments.data.length === 0) {
+                commentsList.innerHTML = '<li class="mb-2 text-gray-800">No comments yet.</li>';
+                return;
+            }
+            comments.data.forEach(comment => {
+                author = comment.author.canEdit ? "You" : comment.author.username;
+                const li = document.createElement('li');
+                li.className = "mb-2 p-2 bg-gray-100 rounded";
+                li.innerHTML = `
+                    <p>${comment.content}</p>
+                    <p class="text-sm text-gray-600 mb-1">By: ${author} on ${new Date(comment.created_at).toLocaleString()}</p>
+                `;
+                commentsList.appendChild(li);
+            });
+            updatePostsDivHeight();
+        }).catch(err => {
+            alert("Failed to load comments: " + err.message);
+        });
+    };
+
     closePostProfile?.addEventListener('click', hidePostProfile);
 
-    const getPosts = async () => {
-        API.listPosts().then(posts => {
-            postsList.innerHTML = '';
+    const getPosts = async (currentpage = 1) => {
+        API.listPosts({ page: currentpage }).then(posts => {
             if (!posts) {
                 postsList.innerHTML = '<li>No posts available.</li>';
                 return;
             }
-            posts.forEach(post => {
+            totalPosts = posts.paginate.total;
+            currentPosts = posts.paginate.current;
+            currentPage = posts.paginate.page;
+            posts.data.forEach(post => {
                 const li = document.createElement('li');
                 li.className = "bg-white p-4 rounded shadow cursor-pointer min-h-64 max-h-64 flex items-center hover:bg-blue-100 transition";
                 author = post.author.canEdit ? "You" : post.author.username;
@@ -199,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 li.addEventListener('click', () => showPostProfile(post));
                 postsList.appendChild(li);
             });
-            postsdiv.style.height = postsList.scrollHeight + 48 + "px";
+            updatePostsDivHeight();
         }).catch(err => {
             // alert("Failed to load posts: " + err.message);
             if (err.message.includes("Authentication")) {
@@ -211,6 +274,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 loginPrompt.style.display = "block";
                 loginbtn.onclick = () => logindialog.showModal();
             }
+            updatePostsDivHeight();
         });
     };
 
@@ -219,7 +283,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loginbtn.textContent = "Logout";
         registerbtn.style.display = "none";
         newPostBtn.style.display = "block";
-        SocketAPI.connectSocket();
+        // SocketAPI.connectSocket();
         loginbtn.onclick = () => {
             if (window.socket) { window.socket.close(); window.socket = null; }
             API.logoutClientOnly();
@@ -294,11 +358,12 @@ document.addEventListener('DOMContentLoaded', function () {
     closebtn.addEventListener('click', function () {
         hideDialog(logindialog);
     });
+
     loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
             await API.login(usernameInput.value.trim(), passwordInput.value);
-            SocketAPI.connectSocket();
+            // SocketAPI.connectSocket();
             hideDialog(logindialog);
             alert("Logged in!");
             loginbtn.textContent = "Logout";
