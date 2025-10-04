@@ -72,15 +72,16 @@ func (app *App) GetMessagesFromTo(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * limit
 
-	if r.PathValue("from_user") == "" && r.PathValue("to_user") == "" {
+	if r.PathValue("to_user") == "" {
 		utils.BadRequest(w, errors.New("path values missing"))
 		return
 	}
 
 	user := r.Context().Value(middleware.UserKey).(*users.User)
 
-	if r.PathValue("from_user") != user.Uuid {
+	if user == nil {
 		utils.Unauthorized(w, "what ?")
+		return
 	}
 
 	store := db.New(app.DB)

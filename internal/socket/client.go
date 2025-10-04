@@ -82,6 +82,9 @@ func (c *Client) readMessages() {
 		}
 
 		if err := c.manager.routeEvent(request, c); err != nil {
+			if err.Error() == "unauthenticated client" {
+				c.connection.Close()
+			}
 			if c.manager != nil && c.manager.Logger != nil {
 				c.manager.Logger.Warn("routeEvent error", "uuid", c.uuid, "username", c.username, "err", err)
 			}
@@ -134,19 +137,22 @@ func (c *Client) writeMessages() {
 				return
 			}
 
-			var messageP PrivateMessageEvent
-			if err := json.Unmarshal(message.Payload, &messageP); err != nil {
+			if message.Type == EventPrivateMessage {
+				var messageP PrivateMessageEvent
+				if err := json.Unmarshal(message.Payload, &messageP); err != nil {
 
-				return
+					return
+				}
+				context := context.Background()
+				c.store.Messages.CreateMessage(context, messages.CreateMessageParams{
+					Message:  messageP.Message,
+					FromUser: c.uuid,
+					ToUser:   messageP.To,
+					Time:     time.Now(),
+					Status:   sql.NullInt64{Int64: 1, Valid: true},
+				})
 			}
-			context := context.Background()
-			c.store.Messages.CreateMessage(context, messages.CreateMessageParams{
-				Message:  messageP.Message,
-				FromUser: messageP.From,
-				ToUser:   messageP.To,
-				Time:     time.Now(),
-				Status:   sql.NullInt64{Int64: 1, Valid: true},
-			})
+
 		case <-ticker.C:
 			if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				if c.manager != nil && c.manager.Logger != nil {

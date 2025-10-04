@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"real-time-forum/internal/db/messages"
 	"time"
@@ -17,37 +16,31 @@ func PrivateMessageHandler(event Event, c *Client, d *sql.DB) error {
 		return err
 	}
 	// Validate sender is the connected client
-	if msg.From == "" {
-		errMsg := "sender uuid (from_user) is required"
-		c.egress <- Event{
-			Type:    EventError,
-			Payload: []byte(fmt.Sprintf(`{"error": "%s"}`, errMsg)),
-		}
-		return errors.New(errMsg)
+	if c == nil {
+		return fmt.Errorf("unauthenticated client")
 	}
-	if msg.From != c.uuid {
-		errMsg := "sender uuid does not match authenticated user"
-		c.egress <- Event{
-			Type:    EventError,
-			Payload: []byte(fmt.Sprintf(`{"error": "%s"}`, errMsg)),
-		}
-		return errors.New(errMsg)
+
+	if c.uuid == msg.To {
+		return fmt.Errorf("wrong user")
 	}
+
 	recipient, ok := c.manager.clients[msg.To]
+
 	if !ok {
 		context := context.Background()
 
 		_, err := c.store.Users.GetUser(context, msg.To)
 
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("uknown user")
+			return fmt.Errorf("unknown user")
 		}
 
 		c.store.Messages.CreateMessage(context, messages.CreateMessageParams{
 			Message:  msg.Message,
-			FromUser: msg.From,
+			FromUser: c.uuid,
 			ToUser:   msg.To,
 			Time:     time.Now(),
+			Status:   sql.NullInt64{},
 		})
 
 		return fmt.Errorf("recipient not online")
@@ -74,24 +67,16 @@ type Event struct {
 type EventHandler func(event Event, c *Client, d *sql.DB) error
 
 const (
-	EventSendMessage     = "send_message"
 	EventBroadCastOnline = "online_users"
-	EventNewMessage      = "new_message"
 	EventPrivateMessage  = "private_message"
 	EventError           = "error"
 )
 
 // PrivateMessageEvent represents a private message sent from one user to another
 type PrivateMessageEvent struct {
-	From    string    `json:"from_user"`
 	To      string    `json:"to_user"`
 	Message string    `json:"message"`
 	Sent    time.Time `json:"sent"`
-}
-
-type SendMessageEvent struct {
-	Message string `json:"message"`
-	From    string `json:"from_user"`
 }
 
 type OnlineUser struct {
@@ -103,13 +88,12 @@ type WhoseOnline struct {
 	Online []OnlineUser `json:"online"`
 }
 
-type NewMessageEvent struct {
-	SendMessageEvent
-	Sent time.Time `json:"sent"`
+type ErrorMessage struct {
+	TextError string `json:"error"`
 }
 
 // BrodCastOnline sends the current list of online users to all clients
-func BrodCastOnline(event Event, c *Client, d *sql.DB) error {
+func BroadCastOnline(event Event, c *Client, d *sql.DB) error {
 	return c.manager.BroadcastOnlineUsers()
 }
 
