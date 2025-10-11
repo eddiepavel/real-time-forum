@@ -83,7 +83,7 @@ func (app *App) Login(w http.ResponseWriter, r *http.Request) {
 		utils.Internal(w, errors.New("internal Server error"))
 	}
 
-	utils.OK(w, map[string]string{"token": session.Token, "expires": session.Expiresat.String()})
+	utils.OK(w, map[string]string{"token": session.Token, "username": user.Username.(string), "expires": session.Expiresat.String(), "uuid": user.Uuid})
 
 }
 

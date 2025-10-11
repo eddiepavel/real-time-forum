@@ -74,6 +74,7 @@ const (
 
 // PrivateMessageEvent represents a private message sent from one user to another
 type PrivateMessageEvent struct {
+	From    string    `json:"from_user"`
 	To      string    `json:"to_user"`
 	Message string    `json:"message"`
 	Sent    time.Time `json:"sent"`

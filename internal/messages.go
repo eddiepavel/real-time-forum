@@ -8,10 +8,19 @@ import (
 	"real-time-forum/internal/db/users"
 	"real-time-forum/internal/middleware"
 	"real-time-forum/internal/utils"
+	"time"
 )
 
 type UnreadMessages struct {
 	Count int64 `json:"count"`
+}
+
+type ChatMessage struct {
+	ID         int64     `json:"id"`
+	Message    string    `json:"message"`
+	SenderID   string    `json:"from_id"`
+	ReceiverID string    `json:"to_id"`
+	Time       time.Time `json:"sent"`
 }
 
 func (app *App) GetUnreadMessages(w http.ResponseWriter, r *http.Request) {
@@ -95,6 +104,18 @@ func (app *App) GetMessagesFromTo(w http.ResponseWriter, r *http.Request) {
 		Offset:     offset,
 	})
 
-	utils.OK(w, chatMessages)
+	payloadMessages := make([]ChatMessage, 0, len(chatMessages))
+
+	for i := len(chatMessages) - 1; i >= 0; i-- {
+		payloadMessages = append(payloadMessages, ChatMessage{
+			ID:         chatMessages[i].ID,
+			Message:    chatMessages[i].Message,
+			SenderID:   chatMessages[i].SenderID,
+			ReceiverID: chatMessages[i].ReceiverID,
+			Time:       chatMessages[i].Time,
+		})
+	}
+
+	utils.OK(w, payloadMessages)
 
 }

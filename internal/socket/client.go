@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"log"
 	"real-time-forum/internal/db"
 	"real-time-forum/internal/db/messages"
 	"real-time-forum/internal/db/users"
@@ -25,10 +24,10 @@ type Client struct {
 	store      *db.Store
 }
 
-var (
-	pongWait     = 10 * time.Second
-	pingInterval = (pongWait * 9) / 10
-)
+// var (
+// 	pongWait     = 30 * time.Second // Increase for testing
+// 	pingInterval = 25 * time.Second // Increase for testing
+// )
 
 func NewClient(conn *websocket.Conn, manager *Manager, user *users.User) *Client {
 	// Buffered channel to avoid blocking on slow clients
@@ -53,12 +52,12 @@ func (c *Client) readMessages() {
 
 	c.connection.SetReadLimit(512)
 
-	if err := c.connection.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-		log.Println(err)
-		return
-	}
-	// Configure how to handle Pong responses
-	c.connection.SetPongHandler(c.pongHandler)
+	// _ = c.connection.SetReadDeadline(time.Now().Add(pongWait))
+	// c.connection.SetPongHandler(func(appData string) error {
+	// 	// Update deadline on pong
+	// 	_ = c.connection.SetReadDeadline(time.Now().Add(pongWait))
+	// 	return nil
+	// })
 
 	for {
 		_, payload, err := c.connection.ReadMessage()
@@ -94,10 +93,10 @@ func (c *Client) readMessages() {
 
 func (c *Client) writeMessages() {
 
-	ticker := time.NewTicker(pingInterval)
+	// ticker := time.NewTicker(pingInterval)
 
 	defer func() {
-		ticker.Stop()
+		// ticker.Stop()
 		if c.manager != nil && c.manager.Logger != nil {
 			c.manager.Logger.Info("Closing client (writeMessages)", "uuid", c.uuid, "username", c.username)
 		}
@@ -120,7 +119,6 @@ func (c *Client) writeMessages() {
 				return
 			}
 			data, err := json.Marshal(message)
-
 			if err != nil {
 				if c.manager != nil && c.manager.Logger != nil {
 					c.manager.Logger.Warn("marshal error (writeMessages)", "uuid", c.uuid, "username", c.username, "err", err)
@@ -140,31 +138,27 @@ func (c *Client) writeMessages() {
 			if message.Type == EventPrivateMessage {
 				var messageP PrivateMessageEvent
 				if err := json.Unmarshal(message.Payload, &messageP); err != nil {
-
 					return
 				}
 				context := context.Background()
 				c.store.Messages.CreateMessage(context, messages.CreateMessageParams{
 					Message:  messageP.Message,
-					FromUser: c.uuid,
+					FromUser: messageP.From,
 					ToUser:   messageP.To,
 					Time:     time.Now(),
 					Status:   sql.NullInt64{Int64: 1, Valid: true},
 				})
 			}
 
-		case <-ticker.C:
-			if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				if c.manager != nil && c.manager.Logger != nil {
-					c.manager.Logger.Warn("ping write error (writeMessages)", "uuid", c.uuid, "username", c.username, "err", err)
-				}
-				return
-			}
+		// case <-ticker.C:
+			// if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+			// 	fmt.Println("ping error:", err)
+			// 	if c.manager != nil && c.manager.Logger != nil {
+			// 		c.manager.Logger.Warn("ping write error (writeMessages)", "uuid", c.uuid, "username", c.username, "err", err)
+			// 	}
+			// 	return
+			// }
 		}
 
 	}
-}
-
-func (c *Client) pongHandler(pongMsg string) error {
-	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
 }
