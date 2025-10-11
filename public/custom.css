@@ -1,0 +1,7 @@
+@keyframes breath {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .6; transform: scale(1.3); }
+  }
+  .animate-breath {
+    animation: breath 1.5s infinite;
+  }

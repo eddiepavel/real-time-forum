@@ -4,9 +4,23 @@ const API = (() => {
   function getToken() {
     return localStorage.getItem(KEY);
   }
-  function setToken(token) {
-    if (token) localStorage.setItem(KEY, token);
+
+  function getUsername() {
+    return localStorage.getItem("username")
   }
+
+  function getUuid() {
+    return localStorage.getItem("uuid")
+  }
+
+  function setToken(token, username, uuid) {
+    if (token) {
+      localStorage.setItem(KEY, token)
+      localStorage.setItem("username", username)
+      localStorage.setItem("uuid", uuid)
+    };
+  }
+
   function clearToken() {
     localStorage.removeItem(KEY);
   }
@@ -41,7 +55,7 @@ const API = (() => {
       method: "POST",
       body: { authvalue, password }, // matches PayloadLogin 
     });
-    setToken(data.data.token);
+    setToken(data.data.token, data.data.username, data.data.uuid);
     return data.data; // { token, expires }
   }
 
@@ -63,6 +77,11 @@ const API = (() => {
 
   async function getPost(id) {
     return request(`/post/${id}`, { auth: true });
+  }
+
+  async function getMessagesWith(uuid, { page = 1, limit = 10 } = {}) {
+    const search = new URLSearchParams({ page: String(page), limit: String(limit) });
+    return request(`/messages/${uuid}?${search.toString()}`, { auth: true });
   }
 
   // Comments
@@ -99,5 +118,5 @@ const API = (() => {
     clearToken();
   }
 
-  return { login, register, getToken, logoutClientOnly, listPosts, createPost, getPost, listComments, addComment, editPost, deletePost };
+  return { login, register, getToken, getUuid, getUsername, logoutClientOnly, listPosts, getMessagesWith, createPost, getPost, listComments, addComment, editPost, deletePost };
 })();

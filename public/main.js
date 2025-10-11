@@ -236,6 +236,7 @@ document.addEventListener('DOMContentLoaded', function () {
     closePostProfile?.addEventListener('click', hidePostProfile);
 
     const getPosts = async (currentpage = 1) => {
+        postsList.innerHTML = '';
         API.listPosts({ page: currentpage }).then(posts => {
             if (!posts) {
                 postsList.innerHTML = '<li>No posts available.</li>';
@@ -283,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loginbtn.textContent = "Logout";
         registerbtn.style.display = "none";
         newPostBtn.style.display = "block";
-        // SocketAPI.connectSocket();
+        SocketAPI.connectSocket();
         loginbtn.onclick = () => {
             if (window.socket) { window.socket.close(); window.socket = null; }
             API.logoutClientOnly();
@@ -363,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         try {
             await API.login(usernameInput.value.trim(), passwordInput.value);
-            // SocketAPI.connectSocket();
+            SocketAPI.connectSocket();
             hideDialog(logindialog);
             alert("Logged in!");
             loginbtn.textContent = "Logout";
