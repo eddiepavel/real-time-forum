@@ -97,7 +97,7 @@ JOIN users sender ON m.from_user = sender.uuid
 JOIN users receiver ON m.to_user = receiver.uuid
 WHERE (m.from_user = ? AND m.to_user = ?)
    OR (m.from_user = ? AND m.to_user = ?)
-ORDER BY m.time ASC
+ORDER BY m.time DESC
 LIMIT ? OFFSET ?
 `
 
