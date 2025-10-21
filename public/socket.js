@@ -93,6 +93,14 @@ function attachUserClickHandlers() {
   });
 }
 
+function debounce(fn, delay) {
+  let timeout;
+  return function (...args) {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 function openPrivateChatDrawer(username, uuid) {
   const drawer = document.getElementById("privateChatDrawer");
   drawer.dataset.uuid = uuid; 
@@ -131,10 +139,17 @@ function openPrivateChatDrawer(username, uuid) {
     </form>
   `;
 
-  API.getMessagesWith(uuid, { page: 1, limit: 10 }).then(data => {
-    const chatContent = document.getElementById("privateChatContent");
-    chatContent.innerHTML = "";
-    data.data.forEach(msg => {
+  const chatContent = document.getElementById("privateChatContent");
+  chatContent.innerHTML = "";
+
+  let currentPage = 1;
+  let loading = false;
+  let allLoaded = false;
+
+  // Helper to render a batch of messages (prepend if needed)
+  function renderMessages(messages, { prepend = false } = {}) {
+    const fragment = document.createDocumentFragment();
+    messages.forEach(msg => {
       const time = (() => {
         if (msg.sent) {
           const d = new Date(msg.sent);
@@ -154,13 +169,55 @@ function openPrivateChatDrawer(username, uuid) {
         el.className = "mb-1 border border-white bg-white p-1 rounded flex items-center max-w-1/2 w-fit";
       }
       el.innerHTML = `
-        <span class="flex-1 ${isSentByMe ?"text-right" : ""}">${msg.message}</span>
+        <span class="flex-1 ${isSentByMe ? "text-right" : ""}">${msg.message}</span>
         <span class="ml-2 text-xs text-gray-700">${time}</span>
       `;
-      chatContent.appendChild(el);
+      fragment.appendChild(el);
     });
-    chatContent.scrollTop = chatContent.scrollHeight;
-  })
+    if (prepend) {
+      chatContent.prepend(fragment);
+    } else {
+      chatContent.appendChild(fragment);
+    }
+  }
+
+  // Initial load
+  function loadMessages(page, { prepend = false } = {}) {
+    if (loading || allLoaded) return;
+    loading = true;
+    API.getMessagesWith(uuid, { page, limit: 20 }).then(data => {
+      if (!data.data || data.data.length === 0) {
+        allLoaded = true;
+      } else {
+        renderMessages(data.data, { prepend });
+        if (!prepend) chatContent.scrollTop = chatContent.scrollHeight;
+      }
+      loading = false;
+    });
+  }
+
+  loadMessages(currentPage);
+
+  // Debounced infinite scroll handler
+  const debouncedScroll = debounce(function () {
+    if (chatContent.scrollTop < 50 && !loading && !allLoaded) {
+      loading = true; // Move this up to prevent double firing
+      const prevHeight = chatContent.scrollHeight;
+      currentPage += 1;
+      API.getMessagesWith(uuid, { page: currentPage, limit: 20 }).then(data => {
+        if (!data.data || data.data.length === 0) {
+          allLoaded = true;
+        } else {
+          renderMessages(data.data, { prepend: true });
+          // Maintain scroll position after prepending
+          chatContent.scrollTop = chatContent.scrollHeight - prevHeight;
+        }
+        loading = false;
+      });
+    }
+  }, 1000);
+
+  chatContent.onscroll = debouncedScroll;
 
   // Show drawer with transition (like postProfile)
   drawer.classList.remove("translate-x-full", "opacity-0");
