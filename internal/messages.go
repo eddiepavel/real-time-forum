@@ -23,6 +23,11 @@ type ChatMessage struct {
 	Time       time.Time `json:"sent"`
 }
 
+type UserLatestMessages struct {
+	UserId   string `json:"uuid"`
+	Username string `json:"username"`
+}
+
 func (app *App) GetUnreadMessages(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(middleware.UserKey).(*users.User)
 
@@ -117,5 +122,44 @@ func (app *App) GetMessagesFromTo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.OK(w, payloadMessages)
+
+}
+
+func (app *App) GetLatestMessages(w http.ResponseWriter, r *http.Request) {
+
+	currentUser, ok := r.Context().Value(middleware.UserKey).(*users.User)
+
+	if !ok {
+		utils.Unauthorized(w, "you are not from this world. What are you doing?")
+		return
+	}
+
+	store := db.New(app.DB)
+
+	latestMessages, err := store.Users.GetLatestMessages(r.Context(), users.GetLatestMessagesParams{
+		ToUser:     currentUser.Uuid,
+		FromUser:   currentUser.Uuid,
+		Uuid:       currentUser.Uuid,
+		Uuid_2:     currentUser.Uuid,
+		FromUser_2: currentUser.Uuid,
+		FromUser_3: currentUser.Uuid,
+		ToUser_2:   currentUser.Uuid,
+	})
+
+	if err != nil {
+		utils.Internal(w, errors.New("what ? database not found"))
+		return
+	}
+
+	payload := []UserLatestMessages{}
+
+	for _, message := range latestMessages {
+		payload = append(payload, UserLatestMessages{
+			UserId:   message.PartnerID,
+			Username: message.PartnerUsername.(string),
+		})
+	}
+
+	utils.OK(w, payload)
 
 }
