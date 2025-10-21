@@ -98,6 +98,10 @@ const API = (() => {
     });
   }
 
+  async function getLatestMessages() {
+    return request(`/latest/messages`, { auth: true });
+  }
+
   async function editPost(id, { title, content, category }) {
     return request(`/post/${id}/edit`, {
       method: "PUT",
@@ -118,5 +122,5 @@ const API = (() => {
     clearToken();
   }
 
-  return { login, register, getToken, getUuid, getUsername, logoutClientOnly, listPosts, getMessagesWith, createPost, getPost, listComments, addComment, editPost, deletePost };
+  return { login, register, getToken, getLatestMessages, getUuid, getUsername, logoutClientOnly, listPosts, getMessagesWith, createPost, getPost, listComments, addComment, editPost, deletePost };
 })();

@@ -9,6 +9,13 @@ function connectSocket() {
 
   socket.onopen = () => {
     console.log("✅ WebSocket connected");
+    API.getLatestMessages().then(data => {
+      if (data.data && Array.isArray(data.data)) {
+        renderOnlineUsers(data.data);
+      }
+    }).catch(err => {
+      console.error("Failed to fetch latest messages:", err);
+    });
   };
 
   socket.onmessage = (event) => {
@@ -84,7 +91,7 @@ function renderOnlineUsers(users) {
 
 // Attach click listeners to user list items
 function attachUserClickHandlers() {
-  document.querySelectorAll("#onlineUsers li, #offlineUsers li").forEach(li => {
+  document.querySelectorAll("#onlineUsers li").forEach(li => {
     li.onclick = () => {
       const username = li.textContent.trim();
       const uuid = li.dataset.uuid;
@@ -107,7 +114,7 @@ function openPrivateChatDrawer(username, uuid) {
   const containerId = "privateChatDrawerContainer";
   let container = document.getElementById(containerId);
 
-  const userListItems = document.querySelectorAll("#onlineUsers li, #offlineUsers li");
+  const userListItems = document.querySelectorAll("#onlineUsers li");
   userListItems.forEach(li => {
     if (li.dataset.uuid === uuid) {
       const dot = li.querySelector(".private-msg-dot");
@@ -297,7 +304,7 @@ function showPrivateMessage(msg) {
     }
   } else {
     // Drawer is closed or open with someone else, show yellow dot next to sender in user list
-    const userListItems = document.querySelectorAll("#onlineUsers li, #offlineUsers li");
+    const userListItems = document.querySelectorAll("#onlineUsers li");
     userListItems.forEach(li => {
       if (li.dataset.uuid === msg.from_user) {
         let dot = li.querySelector(".private-msg-dot");
