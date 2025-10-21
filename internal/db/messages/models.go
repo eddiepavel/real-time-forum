@@ -16,7 +16,6 @@ type Message struct {
 	ToUser   string
 	Time     time.Time
 	Status   sql.NullInt64
-	Foreign  interface{}
 }
 
 type User struct {

@@ -47,6 +47,87 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getLatestMessages = `-- name: GetLatestMessages :many
+SELECT
+    u.uuid AS partner_id,
+    u.username AS partner_username,
+    MAX(m.time) AS last_message_time
+FROM users u
+JOIN messages m
+  ON (u.uuid = m.from_user AND m.to_user = ?)
+  OR (u.uuid = m.to_user AND m.from_user = ?)
+WHERE u.uuid != ?
+GROUP BY u.uuid, u.username
+
+UNION ALL
+
+SELECT
+    u.uuid AS partner_id,
+    u.username AS partner_username,
+    NULL AS last_message_time
+FROM users u
+WHERE u.uuid != ?
+  AND u.uuid NOT IN (
+      SELECT
+          CASE
+              WHEN m.from_user = ? THEN m.to_user
+              ELSE m.from_user
+          END AS partner_id
+      FROM messages m
+      WHERE m.from_user = ? OR m.to_user = ?
+  )
+ORDER BY
+    last_message_time DESC,
+    partner_username ASC
+`
+
+type GetLatestMessagesParams struct {
+	ToUser     string
+	FromUser   string
+	Uuid       string
+	Uuid_2     string
+	FromUser_2 string
+	FromUser_3 string
+	ToUser_2   string
+}
+
+type GetLatestMessagesRow struct {
+	PartnerID       string
+	PartnerUsername interface{}
+	LastMessageTime interface{}
+}
+
+func (q *Queries) GetLatestMessages(ctx context.Context, arg GetLatestMessagesParams) ([]GetLatestMessagesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getLatestMessages,
+		arg.ToUser,
+		arg.FromUser,
+		arg.Uuid,
+		arg.Uuid_2,
+		arg.FromUser_2,
+		arg.FromUser_3,
+		arg.ToUser_2,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLatestMessagesRow
+	for rows.Next() {
+		var i GetLatestMessagesRow
+		if err := rows.Scan(&i.PartnerID, &i.PartnerUsername, &i.LastMessageTime); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUser = `-- name: GetUser :one
 SELECT uuid, email, username, password, createdat FROM users
 WHERE uuid = ? LIMIT 1

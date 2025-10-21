@@ -12,7 +12,7 @@ import (
 )
 
 const countUnreadUser = `-- name: CountUnreadUser :many
-SELECT id, message, from_user, to_user, time, status, "foreign" FROM messages WHERE to_user = ? AND status = 0
+SELECT id, message, from_user, to_user, time, status FROM messages WHERE to_user = ? AND status = 0
 `
 
 func (q *Queries) CountUnreadUser(ctx context.Context, toUser string) ([]Message, error) {
@@ -31,7 +31,6 @@ func (q *Queries) CountUnreadUser(ctx context.Context, toUser string) ([]Message
 			&i.ToUser,
 			&i.Time,
 			&i.Status,
-			&i.Foreign,
 		); err != nil {
 			return nil, err
 		}
@@ -51,7 +50,7 @@ INSERT INTO messages (
     message, from_user, to_user, time, status
 ) VALUES (
     ?, ?, ?, ?, ?
-) RETURNING id, message, from_user, to_user, time, status, "foreign"
+) RETURNING id, message, from_user, to_user, time, status
 `
 
 type CreateMessageParams struct {
@@ -78,7 +77,6 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		&i.ToUser,
 		&i.Time,
 		&i.Status,
-		&i.Foreign,
 	)
 	return i, err
 }

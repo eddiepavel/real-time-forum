@@ -9,6 +9,15 @@ import (
 	"time"
 )
 
+type Message struct {
+	ID       int64
+	Message  string
+	FromUser string
+	ToUser   string
+	Time     time.Time
+	Status   sql.NullInt64
+}
+
 type User struct {
 	Uuid      string
 	Email     string

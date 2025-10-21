@@ -2,7 +2,7 @@ version: "2"
 sql: 
   - engine: "sqlite"
     queries: ["/internal/db/users/query.sql"]
-    schema: ["/internal/db/users/schema.sql"]
+    schema: ["/internal/db/users/schema.sql", "/internal/db/messages/schema.sql"]
     gen:
       go:
         package: "users"

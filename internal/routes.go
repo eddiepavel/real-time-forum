@@ -25,7 +25,7 @@ func (app *App) RegisterRoutes() http.Handler {
 	mux.HandleFunc("GET /ws", middleware.ChainMiddleware(socketManager.ServeWs, []string{"auth"}, app.DB, app.Logger, 2))
 	mux.HandleFunc("GET /messages/unread", middleware.ChainMiddleware(app.GetUnreadMessages, []string{"auth"}, app.DB, app.Logger, 1))
 	mux.HandleFunc("GET /messages/{to_user}", middleware.ChainMiddleware(app.GetMessagesFromTo, []string{"auth"}, app.DB, app.Logger, 1))
-
+	mux.HandleFunc("GET /latest/messages", middleware.ChainMiddleware(app.GetLatestMessages, []string{"auth"}, app.DB, app.Logger, 1))
 	mux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("../public"))))
 
 	return mux
