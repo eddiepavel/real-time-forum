@@ -121,6 +121,14 @@ func (app *App) GetMessagesFromTo(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	if err := store.Messages.MarkMessagesAsRead(r.Context(), messages.MarkMessagesAsReadParams{
+		ToUser:   user.Uuid,
+		FromUser: r.PathValue("to_user"),
+	}); err != nil {
+		utils.Internal(w, errors.New("internal error"))
+		return
+	}
+
 	utils.OK(w, payloadMessages)
 
 }

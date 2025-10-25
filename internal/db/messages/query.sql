@@ -23,4 +23,7 @@ ORDER BY m.time DESC
 LIMIT ? OFFSET ?;
 
 -- name: CountUnreadUser :many
-SELECT * FROM messages WHERE to_user = ? AND status = 0;
+SELECT * FROM messages WHERE to_user = ? AND (status = 0 OR status IS NULL);
+
+-- name: MarkMessagesAsRead :exec
+UPDATE messages SET status = 1 WHERE to_user = ? AND from_user = ? AND (status = 0 OR status IS NULL);  

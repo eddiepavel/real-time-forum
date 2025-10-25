@@ -24,11 +24,6 @@ type Client struct {
 	store      *db.Store
 }
 
-// var (
-// 	pongWait     = 30 * time.Second // Increase for testing
-// 	pingInterval = 25 * time.Second // Increase for testing
-// )
-
 func NewClient(conn *websocket.Conn, manager *Manager, user *users.User) *Client {
 	// Buffered channel to avoid blocking on slow clients
 	return &Client{
@@ -48,21 +43,15 @@ func (c *Client) readMessages() {
 		if c.manager != nil && c.manager.Logger != nil {
 			c.manager.Logger.Info("Closing client (readMessages)", "uuid", c.uuid, "username", c.username)
 		}
+		close(c.egress)
 	}()
 
 	c.connection.SetReadLimit(512)
 
-	// _ = c.connection.SetReadDeadline(time.Now().Add(pongWait))
-	// c.connection.SetPongHandler(func(appData string) error {
-	// 	// Update deadline on pong
-	// 	_ = c.connection.SetReadDeadline(time.Now().Add(pongWait))
-	// 	return nil
-	// })
-
 	for {
 		_, payload, err := c.connection.ReadMessage()
 
-		if err != nil {
+		if err != nil {	
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				if c.manager != nil && c.manager.Logger != nil {
 					c.manager.Logger.Warn("could not read connection", "uuid", c.uuid, "username", c.username, "err", err)
@@ -93,14 +82,10 @@ func (c *Client) readMessages() {
 
 func (c *Client) writeMessages() {
 
-	// ticker := time.NewTicker(pingInterval)
-
 	defer func() {
-		// ticker.Stop()
 		if c.manager != nil && c.manager.Logger != nil {
 			c.manager.Logger.Info("Closing client (writeMessages)", "uuid", c.uuid, "username", c.username)
 		}
-		close(c.egress)
 		c.manager.removeClient(c)
 	}()
 
@@ -146,18 +131,10 @@ func (c *Client) writeMessages() {
 					FromUser: messageP.From,
 					ToUser:   messageP.To,
 					Time:     time.Now(),
-					Status:   sql.NullInt64{Int64: 1, Valid: true},
+					Status:   sql.NullInt64{Int64: 0, Valid: true},
 				})
 			}
 
-		// case <-ticker.C:
-			// if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-			// 	fmt.Println("ping error:", err)
-			// 	if c.manager != nil && c.manager.Logger != nil {
-			// 		c.manager.Logger.Warn("ping write error (writeMessages)", "uuid", c.uuid, "username", c.username, "err", err)
-			// 	}
-			// 	return
-			// }
 		}
 
 	}

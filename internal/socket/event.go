@@ -40,7 +40,7 @@ func PrivateMessageHandler(event Event, c *Client, d *sql.DB) error {
 			FromUser: c.uuid,
 			ToUser:   msg.To,
 			Time:     time.Now(),
-			Status:   sql.NullInt64{},
+			Status:   sql.NullInt64{Valid: true, Int64: 0},
 		})
 
 		return fmt.Errorf("recipient not online")

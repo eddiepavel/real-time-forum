@@ -12,7 +12,7 @@ import (
 )
 
 const countUnreadUser = `-- name: CountUnreadUser :many
-SELECT id, message, from_user, to_user, time, status FROM messages WHERE to_user = ? AND status = 0
+SELECT id, message, from_user, to_user, time, status FROM messages WHERE to_user = ? AND (status = 0 OR status IS NULL)
 `
 
 func (q *Queries) CountUnreadUser(ctx context.Context, toUser string) ([]Message, error) {
@@ -154,4 +154,18 @@ func (q *Queries) GetMessagesFromToUsers(ctx context.Context, arg GetMessagesFro
 		return nil, err
 	}
 	return items, nil
+}
+
+const markMessagesAsRead = `-- name: MarkMessagesAsRead :exec
+UPDATE messages SET status = 1 WHERE to_user = ? AND from_user = ? AND (status = 0 OR status IS NULL)
+`
+
+type MarkMessagesAsReadParams struct {
+	ToUser   string
+	FromUser string
+}
+
+func (q *Queries) MarkMessagesAsRead(ctx context.Context, arg MarkMessagesAsReadParams) error {
+	_, err := q.db.ExecContext(ctx, markMessagesAsRead, arg.ToUser, arg.FromUser)
+	return err
 }
