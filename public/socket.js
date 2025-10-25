@@ -1,56 +1,89 @@
 let socket = null;
 let lastActiveUserUuid = null;
 
+let allUsersCache = [];
+let currentOnlineUsers = [];
+let unreadMap = {};
+
+function createElem(tag, className, attrs = {}) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  Object.keys(attrs).forEach(k => el.setAttribute(k, attrs[k]));
+  return el;
+}
+
+function formatDateDMY(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return "";
+  const day = d.getDate().toString().padStart(2, "0");
+  const month = (d.getMonth() + 1).toString().padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function formatTimeHM(dateStr = Date.now()) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return "";
+  const h = d.getHours().toString().padStart(2, "0");
+  const m = d.getMinutes().toString().padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function createUnreadDot() {
+  const dot = createElem("span", "private-msg-dot absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-yellow-400 animate-breath");
+  return dot;
+}
+
+function setOnlineDotEl(uuid, onlineSet) {
+  const li = document.querySelector(`#onlineUsers li[data-uuid="${uuid}"]`);
+  if (!li) return;
+  const dotEl = li.querySelector("span.inline-block");
+  if (!dotEl) return;
+  dotEl.className = `inline-block w-2 h-2 rounded-full ${onlineSet.has(uuid) ? "bg-green-500" : "bg-gray-500"} ml-1`;
+}
+
+function addUnreadIndicatorToLi(li) {
+  if (!li || li.querySelector(".private-msg-dot")) return;
+  li.classList.add("relative");
+  li.appendChild(createUnreadDot());
+}
+
 function connectSocket() {
   const token = API.getToken();
   if (!token) return;
 
-  // Fetch latest messages and render users BEFORE opening the socket
-  API.getLatestMessages().then(data => {
-    if (data.data && Array.isArray(data.data)) {
-      renderOnlineUsers(data.data, "function");
+  Promise.all([
+    API.getLatestMessages().catch(() => ({ data: [] })),
+    API.getUnreadMessages().catch(() => ({ data: {} }))
+  ]).then(([latestData, unreadData]) => {
+    if (latestData.data && Array.isArray(latestData.data)) {
+      renderOnlineUsers(latestData.data, "function");
     }
-    API.getUnreadMessages().then(unreadData => {
-      if (unreadData.data && typeof unreadData.data === "object") {
-        unreadMap = unreadData.data; // { uuid: count, ... }
-        // After rendering users, add yellow orb to those with unread
-        Object.keys(unreadMap).forEach(uuid => {
-          if (unreadMap[uuid]) {
-            const li = document.querySelector(`#onlineUsers li[data-uuid="${uuid}"]`);
-            if (li && !li.querySelector('.private-msg-dot')) {
-              const dot = document.createElement("span");
-              dot.className = "private-msg-dot absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-yellow-400 animate-breath";
-              li.classList.add("relative");
-              li.appendChild(dot);
-            }
-          }
-        });
-      }
-    });
-    console.log("✅ Fetched latest messages before socket connection");
-    // Now open the socket
-    socket = new WebSocket(`ws://${window.location.host}/ws?token=${token}`);
-    window.socket = socket; // expose globally for main.js to close
+    if (unreadData.data && typeof unreadData.data === "object") {
+      unreadMap = unreadData.data;
+      Object.keys(unreadMap).forEach(uuid => {
+        if (unreadMap[uuid]) {
+          const li = document.querySelector(`#onlineUsers li[data-uuid="${uuid}"]`);
+          if (li) addUnreadIndicatorToLi(li);
+        }
+      });
+    }
 
-    socket.onopen = () => {
-      console.log("✅ WebSocket connected");
-    };
+    socket = new WebSocket(`ws://${window.location.host}/ws?token=${token}`);
+    window.socket = socket;
+
+    socket.onopen = () => console.log("✅ WebSocket connected");
 
     socket.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-
-      // payload might already be an object; normalize it
-      const payload = (typeof msg.payload === "string")
-        ? JSON.parse(msg.payload)
-        : msg.payload;
-
+      let msg;
+      try { msg = JSON.parse(event.data); } catch (e) { console.warn("invalid socket message", e); return; }
+      const payload = (typeof msg.payload === "string") ? JSON.parse(msg.payload) : msg.payload;
       switch (msg.type) {
         case "online_users":
           currentOnlineUsers = payload.online || [];
           renderOnlineUsers(currentOnlineUsers, "socket");
           break;
         case "private_message":
-          console.log("📩 Private message received:", payload);
           showPrivateMessage(payload);
           break;
         case "error":
@@ -65,13 +98,13 @@ function connectSocket() {
       console.log("⚠️ WebSocket disconnected");
       if (window.socket === socket) window.socket = null;
     };
+
+    console.log("✅ Fetched latest messages before socket connection");
   }).catch(err => {
-    console.error("Failed to fetch latest messages:", err);
+    console.error("Failed to initialize socket data:", err);
   });
 }
 
-// If your backend sets From from the authenticated socket,
-// you don't need fromUuid here. Otherwise, pass it in.
 function sendPrivateMessage(toUuid, message) {
   const fromUuid = API.getUuid();
   lastActiveUserUuid = toUuid;
@@ -81,37 +114,23 @@ function sendPrivateMessage(toUuid, message) {
     console.error("Socket not connected");
     return;
   }
-  const payload = fromUuid
-    ? { from_user: fromUuid, to_user: toUuid, message }
-    : { to_user: toUuid, message }; // backend fills from_user = c.uuid
-
-  s.send(JSON.stringify({
-    type: "private_message",
-    payload
-  }));
+  const payload = fromUuid ? { from_user: fromUuid, to_user: toUuid, message } : { to_user: toUuid, message };
+  s.send(JSON.stringify({ type: "private_message", payload }));
 }
-
-let allUsersCache = [];
-let currentOnlineUsers = [];
-let unreadMap = {};
 
 function renderOnlineUsers(users, source) {
   const onlineUsers = document.getElementById("onlineUsers");
+  if (!onlineUsers) return;
 
   if (source === "function") {
     allUsersCache = users;
     onlineUsers.innerHTML = "";
-    const ul = onlineUsers;
     users.forEach(u => {
       if (API.getUsername() === u.username) return;
-      const li = document.createElement("li");
-      li.className = "cursor-pointer text-black font-bold hover:bg-slate-100 transition-colors duration-200 border bg-white rounded p-1 flex items-center gap-2";
+      const li = createElem("li", "cursor-pointer text-black font-bold hover:bg-slate-100 transition-colors duration-200 border bg-white rounded p-1 flex items-center gap-2");
       li.dataset.uuid = u.uuid;
-      li.innerHTML = `
-        <span class="inline-block w-2 h-2 rounded-full bg-gray-500 ml-1"></span>
-        ${u.username}
-      `;
-      ul.appendChild(li);
+      li.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-gray-500 ml-1"></span>${u.username}`;
+      onlineUsers.appendChild(li);
     });
     attachUserClickHandlers();
     return;
@@ -123,67 +142,43 @@ function renderOnlineUsers(users, source) {
     const offlineList = [];
     allUsersCache.forEach(u => {
       if (API.getUsername() === u.username) return;
-      if (onlineSet.has(u.uuid)) {
-        onlineList.push(u);
-      } else {
-        offlineList.push(u);
-      }
+      (onlineSet.has(u.uuid) ? onlineList : offlineList).push(u);
     });
 
-    // Move lastActiveUserUuid to top of their group
-    function moveToTop(list) {
+    const moveToTop = (list) => {
       if (!lastActiveUserUuid) return list;
-      const idx = list.findIndex(u => u.uuid === lastActiveUserUuid);
-      if (idx > -1) {
-        const [user] = list.splice(idx, 1);
-        list.unshift(user);
-      }
+      const i = list.findIndex(x => x.uuid === lastActiveUserUuid);
+      if (i > -1) { const [it] = list.splice(i, 1); list.unshift(it); }
       return list;
-    }
+    };
 
-    const onlineListOrdered = moveToTop([...onlineList]);
-    const offlineListOrdered = moveToTop([...offlineList]);
-
+    const ordered = [...moveToTop(onlineList), ...moveToTop(offlineList)];
     onlineUsers.innerHTML = "";
-    const ul = onlineUsers;
-    [...onlineListOrdered, ...offlineListOrdered].forEach(u => {
-      const li = document.createElement("li");
-      li.className = "cursor-pointer text-black font-bold hover:bg-slate-100 transition-colors duration-200 border bg-white rounded p-1 flex items-center gap-2";
-      li.dataset.uuid = u.uuid;
+    ordered.forEach(u => {
+      const hasUnread = !!unreadMap[u.uuid];
       const dotColor = onlineSet.has(u.uuid) ? "bg-green-500" : "bg-gray-500";
-      const hasUnread = unreadMap[u.uuid];
-      li.innerHTML = `
-        <span class="inline-block w-2 h-2 rounded-full ${dotColor} ml-1"></span>
-        ${u.username}
-        ${hasUnread ? '<span class="private-msg-dot absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-yellow-400 animate-breath"></span>' : ''}
-      `;
+      const li = createElem("li", "cursor-pointer text-black font-bold hover:bg-slate-100 transition-colors duration-200 border bg-white rounded p-1 flex items-center gap-2");
+      li.dataset.uuid = u.uuid;
+      li.innerHTML = `<span class="inline-block w-2 h-2 rounded-full ${dotColor} ml-1"></span>${u.username}${hasUnread ? '<span class="private-msg-dot absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-yellow-400 animate-breath"></span>' : ''}`;
       if (hasUnread) li.classList.add("relative");
-      ul.appendChild(li);
+      onlineUsers.appendChild(li);
     });
     attachUserClickHandlers();
 
     const drawer = document.getElementById("privateChatDrawer");
     if (drawer && drawer.classList.contains("translate-x-0") && drawer.classList.contains("opacity-100")) {
       const uuid = drawer.dataset.uuid;
-      const isOnline = users.some(u => u.uuid === uuid);
-      const dot = drawer.querySelector(".flex.items-center span.inline-block");
-      if (dot) {
-        dot.classList.remove("bg-green-500", "bg-gray-500");
-        dot.classList.add(isOnline ? "bg-green-500" : "bg-gray-500");
-      }
+      setOnlineDotEl(uuid, onlineSet);
     }
-
     return;
   }
 }
 
-// Attach click listeners to user list items
 function attachUserClickHandlers() {
   document.querySelectorAll("#onlineUsers li").forEach(li => {
     li.onclick = () => {
-      const username = li.textContent.trim();
-      const uuid = li.dataset.uuid;
-      openPrivateChatDrawer(username, uuid);
+      const username = li.childNodes.length > 1 ? li.childNodes[1].textContent.trim() : li.textContent.trim();
+      openPrivateChatDrawer(username, li.dataset.uuid);
     };
   });
 }
@@ -198,30 +193,25 @@ function debounce(fn, delay) {
 
 function openPrivateChatDrawer(username, uuid) {
   const drawer = document.getElementById("privateChatDrawer");
+  if (!drawer) return;
   drawer.dataset.uuid = uuid;
-  const containerId = "privateChatDrawerContainer";
-  let container = document.getElementById(containerId);
   unreadMap[uuid] = false;
 
-  const isOnline = currentOnlineUsers.some(u => u.uuid === uuid);
-
-  const userListItems = document.querySelectorAll("#onlineUsers li");
-  userListItems.forEach(li => {
+  document.querySelectorAll("#onlineUsers li").forEach(li => {
     if (li.dataset.uuid === uuid) {
       const dot = li.querySelector(".private-msg-dot");
       if (dot) dot.remove();
     }
   });
 
-  // If container doesn't exist, create it
+  let container = document.getElementById("privateChatDrawerContainer");
   if (!container) {
-    container = document.createElement("div");
-    container.id = containerId;
-    container.className = "relative bg-slate-300 w-full h-full flex flex-col rounded-l-lg";
+    container = createElem("div", "relative bg-slate-300 w-full h-full flex flex-col rounded-l-lg");
+    container.id = "privateChatDrawerContainer";
     drawer.appendChild(container);
   }
 
-  // Set content
+  const isOnline = currentOnlineUsers.some(u => u.uuid === uuid);
   container.innerHTML = `
     <div class="flex justify-between items-center p-4 border-b">
       <div class="flex items-center">
@@ -232,7 +222,7 @@ function openPrivateChatDrawer(username, uuid) {
     </div>
     <div id="privateChatContent" class="flex-1 bg-slate-100 p-4 overflow-y-auto"></div>
     <form id="privateChatForm" class="flex p-4 border-t items-center">
-      <textarea id="privateChatInput" rows="3" class="flex-1 border bg-white rounded px-2 py-1 resize-none" placeholder="Type a message..." autocomplete="off"></textarea>      
+      <textarea id="privateChatInput" rows="3" class="flex-1 border bg-white rounded px-2 py-1 resize-none" placeholder="Type a message..." autocomplete="off"></textarea>
       <button type="submit" class="ml-2 px-3 py-1 h-8 bg-blue-500 text-white rounded hover:bg-blue-600 transition">Send</button>
     </form>
   `;
@@ -240,124 +230,73 @@ function openPrivateChatDrawer(username, uuid) {
   const chatContent = document.getElementById("privateChatContent");
   chatContent.innerHTML = "";
 
-  let currentPage = 1;
+  let page = 1;
   let loading = false;
   let allLoaded = false;
 
-  // Helper to render a batch of messages (prepend if needed)
   function renderMessages(messages, { prepend = false } = {}) {
     const fragment = document.createDocumentFragment();
+    let lastDate = prepend && chatContent.firstChild ? (() => {
+      let n = chatContent.firstChild;
+      while (n) {
+        if (n.dataset && n.dataset.sent) return formatDateDMY(n.dataset.sent);
+        n = n.nextSibling;
+      }
+      return null;
+    })() : chatContent._lastDate || null;
 
-    function formatDate(dateStr) {
-      const d = new Date(dateStr);
-      if (isNaN(d)) return "";
-      const day = d.getDate().toString().padStart(2, "0");
-      const month = (d.getMonth() + 1).toString().padStart(2, "0");
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
-    }
+    messages.forEach(msg => {
+      const msgDate = formatDateDMY(msg.sent);
+      const prevIsDivider = fragment.lastChild && fragment.lastChild.classList && fragment.lastChild.classList.contains("flex") && fragment.lastChild.textContent.includes(msgDate);
 
-    // --- Render messages and dividers as usual ---
-    let lastDate = prepend && chatContent.firstChild
-      ? (() => {
-        let node = chatContent.firstChild;
-        while (node && node.nodeType === 1) {
-          if (node.classList.contains("flex") && node.textContent.match(/\d{2}\/\d{2}\/\d{4}/)) {
-            return node.textContent.match(/\d{2}\/\d{2}\/\d{4}/)[0];
-          }
-          if (node.dataset && node.dataset.sent) {
-            return formatDate(node.dataset.sent);
-          }
-          node = node.nextSibling;
-        }
-        return null;
-      })()
-      : chatContent._lastDate || null;
-
-    messages.forEach((msg, idx) => {
-      const msgDate = formatDate(msg.sent);
-
-      // Only insert divider if previous element in fragment is not already a divider for this date
-      const prevIsDivider =
-        fragment.childNodes.length > 0 &&
-        fragment.lastChild.classList &&
-        fragment.lastChild.classList.contains("flex") &&
-        fragment.lastChild.textContent.includes(msgDate);
-
-      if (
-        msgDate &&
-        msgDate !== lastDate &&
-        !prevIsDivider
-      ) {
-        const divider = document.createElement("div");
-        divider.className = "flex items-center my-2";
-        divider.innerHTML = `
-          <span class="flex-1 border-t border-gray-300"></span>
-          <span class="mx-2 text-xs text-gray-500 bg-slate-200 rounded px-2 py-0.5">${msgDate}</span>
-          <span class="flex-1 border-t border-gray-300"></span>
-        `;
+      if (msgDate && msgDate !== lastDate && !prevIsDivider) {
+        const divider = createElem("div", "flex items-center my-2");
+        divider.innerHTML = `<span class="flex-1 border-t border-gray-300"></span><span class="mx-2 text-xs text-gray-500 bg-slate-200 rounded px-2 py-0.5">${msgDate}</span><span class="flex-1 border-t border-gray-300"></span>`;
         fragment.appendChild(divider);
         lastDate = msgDate;
       }
 
-      const time = (() => {
-        if (msg.sent) {
-          const d = new Date(msg.sent);
-          if (!isNaN(d)) {
-            const hours = d.getHours().toString().padStart(2, "0");
-            const minutes = d.getMinutes().toString().padStart(2, "0");
-            return `${hours}:${minutes}`;
-          }
-        }
-        return "";
-      })();
+      const time = formatTimeHM(msg.sent);
       const isSentByMe = msg.from_id === API.getUuid();
-      const el = document.createElement("div");
-      el.dataset.sent = msg.sent;
-      if (isSentByMe) {
-        el.className = "mb-1 border border-white bg-teal-400 p-1 rounded flex items-center self-end justify-end ml-auto max-w-1/2 w-fit";
-      } else {
-        el.className = "mb-1 border border-white bg-white p-1 rounded flex items-center max-w-1/2 w-fit";
-      }
-      el.innerHTML = `
-        <span class="flex-1 ${isSentByMe ? "text-right" : ""}">${msg.message}</span>
-        <span class="ml-2 text-xs text-gray-700">${time}</span>
-      `;
+      const el = createElem("div", isSentByMe ? "mb-1 border border-white bg-teal-400 p-1 rounded flex items-center self-end justify-end ml-auto max-w-1/2 w-fit" : "mb-1 border border-white bg-white p-1 rounded flex items-center max-w-1/2 w-fit");
+      if (msg.sent) el.dataset.sent = msg.sent;
+      el.innerHTML = `<span class="flex-1 ${isSentByMe ? "text-right" : ""}">${msg.message}</span><span class="ml-2 text-xs text-gray-700">${time}</span>`;
       fragment.appendChild(el);
     });
 
+    if (prepend) chatContent.prepend(fragment);
+    else chatContent.appendChild(fragment);
+
+    // ensure there's a date divider at the very top after a prepend, when needed
     if (prepend) {
-      chatContent.prepend(fragment);
-    } else {
-      chatContent.appendChild(fragment);
+      const topSentNode = Array.from(chatContent.childNodes).find(n => n.nodeType === 1 && n.dataset && n.dataset.sent);
+      const topDate = topSentNode ? formatDateDMY(topSentNode.dataset.sent) : null;
+      const firstIsDivider = chatContent.firstChild && chatContent.firstChild.classList && chatContent.firstChild.classList.contains("flex") && topDate && chatContent.firstChild.textContent.includes(topDate);
+      if (topDate && !firstIsDivider) {
+        const topDivider = createElem("div", "flex items-center my-2");
+        topDivider.innerHTML = `<span class="flex-1 border-t border-gray-300"></span><span class="mx-2 text-xs text-gray-500 bg-slate-200 rounded px-2 py-0.5">${topDate}</span><span class="flex-1 border-t border-gray-300"></span>`;
+        chatContent.prepend(topDivider);
+      }
     }
+
     chatContent._lastDate = lastDate;
 
-    // --- Remove duplicate dividers for the same date, keep only the first one ---
-    const seenDates = new Set();
-    const nodesToRemove = [];
+    // remove duplicate date dividers (keep first)
+    const seen = new Set();
+    const toRemove = [];
     chatContent.childNodes.forEach(node => {
-      if (
-        node.nodeType === 1 &&
-        node.classList.contains("flex") &&
-        node.textContent.match(/\d{2}\/\d{2}\/\d{4}/)
-      ) {
-        const date = node.textContent.match(/\d{2}\/\d{2}\/\d{4}/)[0];
-        if (seenDates.has(date)) {
-          nodesToRemove.push(node);
-        } else {
-          seenDates.add(date);
-        }
+      if (node.nodeType === 1 && node.classList.contains("flex") && node.textContent.match(/\d{2}\/\d{2}\/\d{4}/)) {
+        const d = node.textContent.match(/\d{2}\/\d{2}\/\d{4}/)[0];
+        if (seen.has(d)) toRemove.push(node); else seen.add(d);
       }
     });
-    nodesToRemove.forEach(node => node.remove());
+    toRemove.forEach(n => n.remove());
   }
 
-  // Initial load
-  function loadMessages(page, { prepend = false } = {}) {
+  function loadMessages(p, { prepend = false } = {}) {
     if (loading || allLoaded) return;
     loading = true;
-    API.getMessagesWith(uuid, { page, limit: 20 }).then(data => {
+    API.getMessagesWith(uuid, { page: p, limit: 20 }).then(data => {
       if (!data.data || data.data.length === 0) {
         allLoaded = true;
       } else {
@@ -365,165 +304,89 @@ function openPrivateChatDrawer(username, uuid) {
         if (!prepend) chatContent.scrollTop = chatContent.scrollHeight;
       }
       loading = false;
-    });
+    }).catch(() => { loading = false; });
   }
 
-  loadMessages(currentPage);
+  loadMessages(page);
 
-  // Debounced infinite scroll handler
-  const debouncedScroll = debounce(function () {
+  const debouncedScroll = debounce(() => {
     if (chatContent.scrollTop < 50 && !loading && !allLoaded) {
-      loading = true; // Move this up to prevent double firing
-      const prevHeight = chatContent.scrollHeight;
-      currentPage += 1;
-      API.getMessagesWith(uuid, { page: currentPage, limit: 20 }).then(data => {
-        if (!data.data || data.data.length === 0) {
-          allLoaded = true;
-        } else {
+      loading = true;
+      const prev = chatContent.scrollHeight;
+      page += 1;
+      API.getMessagesWith(uuid, { page, limit: 20 }).then(data => {
+        if (!data.data || data.data.length === 0) allLoaded = true;
+        else {
           renderMessages(data.data, { prepend: true });
-          // Maintain scroll position after prepending
-          chatContent.scrollTop = chatContent.scrollHeight - prevHeight;
+          chatContent.scrollTop = chatContent.scrollHeight - prev;
         }
         loading = false;
-      });
+      }).catch(() => { loading = false; });
     }
-  }, 1000);
+  }, 500);
 
   chatContent.onscroll = debouncedScroll;
 
-  // Show drawer with transition (like postProfile)
   drawer.classList.remove("translate-x-full", "opacity-0");
   drawer.classList.add("translate-x-0", "opacity-100");
 
-  // Close button logic
   document.getElementById("closePrivateChatDrawer").onclick = () => {
     drawer.classList.remove("translate-x-0", "opacity-100");
     drawer.classList.add("translate-x-full", "opacity-0");
-    setTimeout(() => {
-      container.innerHTML = "";
-    }, 500); // match transition duration
+    setTimeout(() => { container.innerHTML = ""; }, 500);
   };
 
-  // Send message logic
   document.getElementById("privateChatForm").onsubmit = (e) => {
     e.preventDefault();
     const input = document.getElementById("privateChatInput");
     const msg = input.value.trim();
-    if (msg) {
-      sendPrivateMessage(uuid, msg);
-      input.value = "";
-  
-      // Locally show the sent message as a teal bubble on the right
-      const chatContent = document.getElementById("privateChatContent");
-      if (chatContent) {
-        // --- Ensure today's divider exists ---
-        const now = new Date();
-        const day = now.getDate().toString().padStart(2, "0");
-        const month = (now.getMonth() + 1).toString().padStart(2, "0");
-        const year = now.getFullYear();
-        const todayStr = `${day}/${month}/${year}`;
-  
-        let hasTodayDivider = false;
-        chatContent.childNodes.forEach(node => {
-          if (
-            node.nodeType === 1 &&
-            node.classList.contains("flex") &&
-            node.textContent.includes(todayStr)
-          ) {
-            hasTodayDivider = true;
-          }
-        });
-  
-        if (!hasTodayDivider) {
-          const divider = document.createElement("div");
-          divider.className = "flex items-center my-2";
-          divider.innerHTML = `
-            <span class="flex-1 border-t border-gray-300"></span>
-            <span class="mx-2 text-xs text-gray-500 bg-slate-200 rounded px-2 py-0.5">${todayStr}</span>
-            <span class="flex-1 border-t border-gray-300"></span>
-          `;
-          chatContent.appendChild(divider);
-        }
-        // --- End divider check ---
-  
-        const time = (() => {
-          const d = new Date();
-          const hours = d.getHours().toString().padStart(2, "0");
-          const minutes = d.getMinutes().toString().padStart(2, "0");
-          return `${hours}:${minutes}`;
-        })();
-        const el = document.createElement("div");
-        el.className = "mb-1 border border-white bg-teal-400 p-1 rounded flex items-center self-end justify-end ml-auto max-w-1/2 w-fit";
-        el.innerHTML = `
-          <span class="flex-1 text-right">${msg}</span>
-          <span class="ml-2 text-xs text-gray-700">${time}</span>
-        `;
-        chatContent.appendChild(el);
-        chatContent.scrollTop = chatContent.scrollHeight;
-      }
+    if (!msg) return;
+    sendPrivateMessage(uuid, msg);
+    input.value = "";
+
+    const today = formatDateDMY(Date.now());
+    let hasDivider = false;
+    chatContent.childNodes.forEach(node => {
+      if (node.nodeType === 1 && node.classList.contains("flex") && node.textContent.includes(today)) hasDivider = true;
+    });
+
+    if (!hasDivider) {
+      const divider = createElem("div", "flex items-center my-2");
+      divider.innerHTML = `<span class="flex-1 border-t border-gray-300"></span><span class="mx-2 text-xs text-gray-500 bg-slate-200 rounded px-2 py-0.5">${today}</span><span class="flex-1 border-t border-gray-300"></span>`;
+      chatContent.appendChild(divider);
     }
+
+    const time = formatTimeHM();
+    const el = createElem("div", "mb-1 border border-white bg-teal-400 p-1 rounded flex items-center self-end justify-end ml-auto max-w-1/2 w-fit");
+    el.innerHTML = `<span class="flex-1 text-right">${msg}</span><span class="ml-2 text-xs text-gray-700">${time}</span>`;
+    chatContent.appendChild(el);
+    chatContent.scrollTop = chatContent.scrollHeight;
   };
 }
 
 function showPrivateMessage(msg) {
   const drawer = document.getElementById("privateChatDrawer");
-  const container = document.getElementById("privateChatDrawerContainer");
-  const username = document.getElementById("username");
-
   lastActiveUserUuid = msg.from_user;
-
   renderOnlineUsers(currentOnlineUsers, "socket");
 
-  // Format timestamp (show only HH:MM)
-  let time = "";
-  if (msg.sent) {
-    const d = new Date(msg.sent);
-    if (!isNaN(d)) {
-      const hours = d.getHours().toString().padStart(2, "0");
-      const minutes = d.getMinutes().toString().padStart(2, "0");
-      time = `${hours}:${minutes}`;
-    }
-  }
-
-  // Check if drawer is open and showing the sender (by uuid)
-  const drawerOpen = drawer.classList.contains("translate-x-0") && drawer.classList.contains("opacity-100");
+  const time = formatTimeHM(msg.sent);
+  const drawerOpen = drawer && drawer.classList.contains("translate-x-0") && drawer.classList.contains("opacity-100");
   const isActiveChat = drawerOpen && drawer.dataset.uuid === msg.from_user;
 
   if (!isActiveChat) {
     unreadMap[msg.from_user] = true;
+    const li = document.querySelector(`#onlineUsers li[data-uuid="${msg.from_user}"]`);
+    if (li) addUnreadIndicatorToLi(li);
+    return;
   }
 
-  if (isActiveChat) {
-    // Drawer is open with the sender, render message inside
-    const chatContent = document.getElementById("privateChatContent");
-    if (chatContent) {
-      const el = document.createElement("div");
-      el.className = "mb-1 mr-1 border border-white bg-white p-1 rounded flex items-center max-w-1/2 w-fit";
-      el.innerHTML = `
-        <span class="flex-1">${msg.message}</span>
-        <span class="ml-2 text-xs text-gray-500">${time}</span>
-      `;
-      chatContent.appendChild(el);
-      chatContent.scrollTop = chatContent.scrollHeight;
-      API.getMessagesWith(msg.from_user, { page: 1, limit: 0 }); // Mark as read on backend
-    }
-  } else {
-    // Drawer is closed or open with someone else, show yellow dot next to sender in user list
-    const userListItems = document.querySelectorAll("#onlineUsers li");
-    userListItems.forEach(li => {
-      if (li.dataset.uuid === msg.from_user) {
-        let dot = li.querySelector(".private-msg-dot");
-        if (!dot) {
-          dot = document.createElement("span");
-          dot.className = "private-msg-dot absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-yellow-400 animate-breath";
-          li.classList.add("relative");
-          const usernameSpan = li.querySelector("span:nth-child(2)");
-          if (usernameSpan) usernameSpan.after(dot);
-          else li.appendChild(dot);
-        }
-      }
-    });
-  }
+  const chatContent = document.getElementById("privateChatContent");
+  if (!chatContent) return;
+  const el = createElem("div", "mb-1 mr-1 border border-white bg-white p-1 rounded flex items-center max-w-1/2 w-fit");
+  el.innerHTML = `<span class="flex-1">${msg.message}</span><span class="ml-2 text-xs text-gray-500">${time}</span>`;
+  chatContent.appendChild(el);
+  chatContent.scrollTop = chatContent.scrollHeight;
+  API.getMessagesWith(msg.from_user, { page: 1, limit: 0 }).catch(() => {});
 }
 
 window.SocketAPI = { connectSocket, sendPrivateMessage };
