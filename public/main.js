@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const regPasswordInput = document.getElementById('reg_password');
     const regConfirmPasswordInput = document.getElementById('confirm_password');
     const regCancelBtn = document.getElementById('cancelbtn2');
+    const currentUserDisplay = document.getElementById('currentUser');
     const newPostBtn = document.getElementById('newpostbtn');
     const postsdiv = document.getElementById('posts');
     const editPostDialog = document.getElementById('editPostDialog');
@@ -34,6 +35,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const postsList = document.getElementById('postsList');
     const loginPrompt = document.getElementById('loginPrompt');
     const postProfile = document.getElementById('postProfile');
+    const onlineUsersList = document.getElementById('onlineUsers');
+    const privateChatDrawer = document.getElementById('privateChatDrawer');
     const postProfileContainer = document.getElementById('postProfileContainer');
     const postProfileContent = document.getElementById('postProfileContent');
     const closePostProfile = document.getElementById('closePostProfile');
@@ -272,6 +275,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 registerbtn.style.display = "block";
                 newPostBtn.style.display = "none";
                 postsList.innerHTML = '';
+                currentUserDisplay.textContent = '';
+                onlineUsersList.innerHTML = '';
+                privateChatDrawer.classList.add('hidden');
                 loginPrompt.style.display = "block";
                 loginbtn.onclick = () => logindialog.showModal();
             }
@@ -285,6 +291,7 @@ document.addEventListener('DOMContentLoaded', function () {
         registerbtn.style.display = "none";
         newPostBtn.style.display = "block";
         SocketAPI.connectSocket();
+        currentUserDisplay.textContent = `Logged in as: ${API.getUsername()}`;
         loginbtn.onclick = () => {
             if (window.socket) { window.socket.close(); window.socket = null; }
             API.logoutClientOnly();
@@ -292,6 +299,9 @@ document.addEventListener('DOMContentLoaded', function () {
             registerbtn.style.display = "block";
             newPostBtn.style.display = "none";
             postsList.innerHTML = '';
+            currentUserDisplay.textContent = '';
+            privateChatDrawer.classList.add('hidden');
+            onlineUsersList.innerHTML = '';
             loginPrompt.style.display = "block";
             loginbtn.onclick = () => logindialog.showModal();
         };
@@ -371,6 +381,8 @@ document.addEventListener('DOMContentLoaded', function () {
             newPostBtn.style.display = "block";
             registerbtn.style.display = "none";
             loginPrompt.style.display = "none";
+            privateChatDrawer.classList.remove('hidden');
+            currentUserDisplay.textContent = `Logged in as: ${API.getUsername()}`;
             loginbtn.onclick = () => {
                 if (window.socket) { window.socket.close(); window.socket = null; }
                 API.logoutClientOnly();
@@ -378,6 +390,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 registerbtn.style.display = "block";
                 newPostBtn.style.display = "none";
                 postsList.innerHTML = '';
+                currentUserDisplay.textContent = '';
+                onlineUsersList.innerHTML = '';
+                privateChatDrawer.classList.add('hidden');
                 loginPrompt.style.display = "block";
                 loginbtn.onclick = () => showDialog(logindialog);
             };

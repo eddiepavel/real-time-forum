@@ -15,7 +15,8 @@
             <nav
                 class="flex items-center justify-between rounded-br-2xl py-10 bg-slate-400 fixed top-0 shadow-2xl -left-2 w-3/4 z-50">
                 <h1 class="text-4xl font-bold text-slate-100 ml-10 [-webkit-text-stroke:1px_black]">Real-Time Forum</h1>
-                <div class="flex space-x-2 mr-6">
+                <div class="flex items-center space-x-2 mr-6">
+                    <p id="currentUser" class="font-semibold text-xl mr-4"></p>
                     <button id="loginbtn"
                         class="px-4 py-2 bg-slate-900 text-slate-200 rounded cursor-pointer hover:bg-slate-700 transition duration-300">Login</button>
                     <button id="registerbtn"
@@ -30,7 +31,7 @@
             </div>
             <div id="posts"
                 class="transition-all duration-500 overflow-hidden relative bg-slate-700 mr-2 p-6 rounded-r-xl">
-                <h1 id="loginPrompt" class="text-3xl font-bold p-6 text-slate-100">You need to log in to see the posts!
+                <h1 id="loginPrompt" class="text-3xl font-bold p-6 text-slate-100">You need to log in to see the posts and chat!
                 </h1>
                 <ul id="postsList" class="space-y-4 h-auto transition-opacity duration-300 px-2">
                     <!-- Posts will be dynamically added here -->
@@ -64,7 +65,7 @@
         <div id="chat" class="bg-slate-300 w-1/4 p-6 mt-2 rounded-l-lg shadow-lg fixed top-0 right-0 h-[98vh]">
             <h2 class="text-2xl font-bold mb-4">Chat</h2>
             <h3 class="text-lg font-semibold mb-2">Users</h3>
-            <ul id="onlineUsers" class="mb-4 text-sm text-gray-700">
+            <ul id="onlineUsers" class="mb-4 space-y-1 text-sm text-gray-700">
                 <!-- Online users will be dynamically added here -->
             </ul>
             <div id="privateChatDrawer"
@@ -105,6 +106,17 @@
                 class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
             <input type="password" id="confirm_password" placeholder="Confirm Password"
                 class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+            <!-- Gender and Age fields -->
+            <select id="reg_gender" class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="" disabled selected>Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+            </select>
+            <input type="number" id="reg_age" placeholder="Age" min="1" max="99"
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+
             <div class="flex justify-end space-x-4">
                 <button type="submit"
                     class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-300">Register</button>
@@ -181,9 +193,9 @@
             class="absolute top-8 right-8 w-10 h-10 flex items-center justify-center bg-slate-800 text-white rounded-full text-2xl hover:bg-slate-600 transition"
             aria-label="Close">&times;</button>
     </div>
+    <script src="main.js"></script>
     <script src="api.js"></script>
     <script src="socket.js"></script>
-    <script src="main.js"></script>
 </body>
 
 </html>
