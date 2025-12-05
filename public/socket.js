@@ -4,6 +4,7 @@ let lastActiveUserUuid = null;
 let allUsersCache = [];
 let currentOnlineUsers = [];
 let unreadMap = {};
+let typingTimeouts = {};
 
 function createElem(tag, className, attrs = {}) {
   const el = document.createElement(tag);
@@ -86,6 +87,9 @@ function connectSocket() {
         case "private_message":
           showPrivateMessage(payload);
           break;
+        case "typing_indicator":
+          handleTypingIndicator(payload);
+          break;
         case "error":
           console.error("❌ Socket error:", payload);
           break;
@@ -103,6 +107,13 @@ function connectSocket() {
   }).catch(err => {
     console.error("Failed to initialize socket data:", err);
   });
+}
+
+function sendTypingIndicator(toUuid, isTyping) {
+  const s = window.socket;
+  if (!s || s.readyState !== WebSocket.OPEN) return;
+  const payload = { to_user: toUuid, is_typing: isTyping };
+  s.send(JSON.stringify({ type: "typing_indicator", payload }));
 }
 
 function sendPrivateMessage(toUuid, message) {
@@ -361,7 +372,34 @@ function openPrivateChatDrawer(username, uuid) {
     el.innerHTML = `<span class="flex-1 text-right">${msg}</span><span class="ml-2 text-xs text-gray-700">${time}</span>`;
     chatContent.appendChild(el);
     chatContent.scrollTop = chatContent.scrollHeight;
+
   };
+
+  // Add typing indicator logic
+  const privateChatInput = document.getElementById("privateChatInput");
+  let typingTimeout = null;
+  let isCurrentlyTyping = false;
+
+  privateChatInput.addEventListener("input", () => {
+    if (!isCurrentlyTyping) {
+      isCurrentlyTyping = true;
+      sendTypingIndicator(uuid, true);
+    }
+
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      isCurrentlyTyping = false;
+      sendTypingIndicator(uuid, false);
+    }, 2000);
+  });
+
+  privateChatInput.addEventListener("blur", () => {
+    if (isCurrentlyTyping) {
+      clearTimeout(typingTimeout);
+      isCurrentlyTyping = false;
+      sendTypingIndicator(uuid, false);
+    }
+  });
 }
 
 function showPrivateMessage(msg) {
@@ -387,6 +425,81 @@ function showPrivateMessage(msg) {
   chatContent.appendChild(el);
   chatContent.scrollTop = chatContent.scrollHeight;
   API.getMessagesWith(msg.from_user, { page: 1, limit: 0 }).catch(() => {});
+}
+
+function handleTypingIndicator(payload) {
+  const drawer = document.getElementById("privateChatDrawer");
+  if (!drawer) return;
+  
+  const drawerOpen = drawer.classList.contains("translate-x-0") && drawer.classList.contains("opacity-100");
+  const isActiveChat = drawerOpen && drawer.dataset.uuid === payload.from_user;
+  
+  // Show typing in user list if chat is not open with this user
+  if (!isActiveChat) {
+    if (payload.is_typing) {
+      showTypingInUserList(payload.from_user, payload.username);
+    } else {
+      hideTypingInUserList(payload.from_user);
+    }
+    return;
+  }
+  
+  // Hide typing from user list if chat is open
+  hideTypingInUserList(payload.from_user);
+  
+  const chatContent = document.getElementById("privateChatContent");
+  if (!chatContent) return;
+  
+  let typingIndicator = document.getElementById("typingIndicator");
+  
+  if (payload.is_typing) {
+    if (!typingIndicator) {
+      typingIndicator = createElem("div", "mb-2 flex items-center gap-2");
+      typingIndicator.id = "typingIndicator";
+      typingIndicator.innerHTML = `
+        <span class="text-sm text-gray-600 font-medium">${payload.username} is typing</span>
+        <div class="flex gap-1">
+          <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+          <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+          <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+        </div>
+      `;
+      chatContent.appendChild(typingIndicator);
+      chatContent.scrollTop = chatContent.scrollHeight;
+    }
+  } else {
+    if (typingIndicator) {
+      typingIndicator.remove();
+    }
+  }
+}
+
+function showTypingInUserList(fromUuid, username) {
+  const li = document.querySelector(`#onlineUsers li[data-uuid="${fromUuid}"]`);
+  if (!li) return;
+  
+  // Check if typing indicator already exists
+  let typingDots = li.querySelector('.typing-dots');
+  if (!typingDots) {
+    typingDots = createElem("div", "typing-dots absolute right-2 top-1/2 -translate-y-1/2 flex gap-1");
+    typingDots.innerHTML = `
+      <span class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+      <span class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+      <span class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+    `;
+    li.classList.add("relative");
+    li.appendChild(typingDots);
+  }
+}
+
+function hideTypingInUserList(fromUuid) {
+  const li = document.querySelector(`#onlineUsers li[data-uuid="${fromUuid}"]`);
+  if (!li) return;
+  
+  const typingDots = li.querySelector('.typing-dots');
+  if (typingDots) {
+    typingDots.remove();
+  }
 }
 
 window.SocketAPI = { connectSocket, sendPrivateMessage };
