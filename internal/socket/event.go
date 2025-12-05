@@ -69,6 +69,7 @@ type EventHandler func(event Event, c *Client, d *sql.DB) error
 const (
 	EventBroadCastOnline = "online_users"
 	EventPrivateMessage  = "private_message"
+	EventTypingIndicator = "typing_indicator"
 	EventError           = "error"
 )
 
@@ -129,5 +130,50 @@ func (m *Manager) BroadcastOnlineUsers() error {
 			}
 		}
 	}
+	return nil
+}
+
+// TypingIndicatorEvent represents a typing indicator sent from one user to another
+type TypingIndicatorEvent struct {
+	From     string `json:"from_user"`
+	To       string `json:"to_user"`
+	Username string `json:"username"`
+	IsTyping bool   `json:"is_typing"`
+}
+
+// TypingIndicatorHandler routes typing indicator events to the intended recipient
+func TypingIndicatorHandler(event Event, c *Client, d *sql.DB) error {
+	var typingEvent TypingIndicatorEvent
+	if err := json.Unmarshal(event.Payload, &typingEvent); err != nil {
+		return err
+	}
+
+	// Validate sender is the connected client
+	if c == nil {
+		return fmt.Errorf("unauthenticated client")
+	}
+
+	// Find the recipient
+	recipient, ok := c.manager.clients[typingEvent.To]
+	if !ok {
+		// Recipient not online, just ignore silently
+		return nil
+	}
+
+	// Set the sender info
+	typingEvent.From = c.uuid
+	typingEvent.Username = c.username
+
+	payload, err := json.Marshal(typingEvent)
+	if err != nil {
+		return err
+	}
+
+	// Send typing indicator to the recipient
+	recipient.egress <- Event{
+		Type:    EventTypingIndicator,
+		Payload: payload,
+	}
+
 	return nil
 }

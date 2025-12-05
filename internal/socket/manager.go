@@ -42,6 +42,7 @@ func NewManager(db *sql.DB, l *slog.Logger) *Manager {
 func (m *Manager) manageEventHandlers() {
 	m.handlers[EventBroadCastOnline] = BroadCastOnline
 	m.handlers[EventPrivateMessage] = PrivateMessageHandler
+	m.handlers[EventTypingIndicator] = TypingIndicatorHandler
 }
 
 func (m *Manager) routeEvent(event Event, c *Client) error {
